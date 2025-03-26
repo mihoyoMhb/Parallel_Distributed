@@ -1,20 +1,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-unsigned int next_power_of_two(int b) {
-    if (b == 0) {
-        return 1; // 处理b为0的情况，返回1
-    }
-    b--;
-    b |= b >> 1;
-    b |= b >> 2;
-    b |= b >> 4;
-    b |= b >> 8;
-    b |= b >> 16;
-    b++;
-    return b;
-}
+#include <math.h>
 
 
 int main(int argc, char *argv[]){
@@ -32,17 +19,17 @@ int main(int argc, char *argv[]){
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
     //Using main process to initialize the array
-    double *a = NULL;
-    if(myid == 0){
-        a = (double *)malloc(num_steps * sizeof(double));
-        if(a == NULL){
-            printf("Error allocating memory\n");
-            MPI_Abort(MPI_COMM_WORLD, 1);
-        }
-        for(int i = 0; i < num_steps; i++){
-            a[i] = (double)i;
-        }
-    }
+    // double *a = NULL;
+    // if(myid == 0){
+    //     a = (double *)malloc(num_steps * sizeof(double));
+    //     if(a == NULL){
+    //         printf("Error allocating memory\n");
+    //         MPI_Abort(MPI_COMM_WORLD, 1);
+    //     }
+    //     for(int i = 0; i < num_steps; i++){
+    //         a[i] = (double)i;
+    //     }
+    // }
 
     /*Since the num_steps may not be able to be divised by size*/
     // The number of elements each process will handle
@@ -75,26 +62,41 @@ int main(int argc, char *argv[]){
     }
 
 
-    // Allocate memory for the local array
-    double *my_array = (double *)malloc(sendcounts[myid] * sizeof(double));
-    int my_array_size = sendcounts[myid];
-    if(my_array == NULL){
-        printf("Error allocating memory\n");
-        MPI_Abort(MPI_COMM_WORLD, 1);
+    // // Allocate memory for the local array
+    // double *my_array = (double *)malloc(sendcounts[myid] * sizeof(double));
+    // int my_array_size = sendcounts[myid];
+    // if(my_array == NULL){
+    //     printf("Error allocating memory\n");
+    //     MPI_Abort(MPI_COMM_WORLD, 1);
+    // }
+    // // Scatter the data to all processes
+    // MPI_Scatterv(a, sendcounts, displacements, MPI_DOUBLE, my_array, my_array_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // 本地生成数据，避免分发
+
+
+    double start_time, end_time;
+    MPI_Barrier(MPI_COMM_WORLD); // 同步所有进程
+    start_time = MPI_Wtime();
+
+
+    int my_start = displacements[myid];
+    int my_count = sendcounts[myid];
+    double *my_array = malloc(my_count * sizeof(double));
+    for (int i = 0; i < my_count; i++) {
+        my_array[i] = my_start + i;
     }
-    // Scatter the data to all processes
-    MPI_Scatterv(a, sendcounts, displacements, MPI_DOUBLE, my_array, my_array_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-
-    /*Calculating the sum locally*/
+    
+    // 计算本地和
     double my_sum = 0.0;
-    for(int i = 0; i < my_array_size; i++){
-        my_sum += my_array[i];
+    for (int i = 0; i < my_count; i++) {
+           my_sum += my_array[i];
     }
 
     // Using tree reduction to calculate the total sum
     double total_sum = my_sum, temp;
     //Starting from the leaf nodes, see notes
+    // https://github.com/HenryLiu0/MPI-Global-Summation/blob/master/%E6%A0%91%E5%BD%A2%E9%80%9A%E7%94%A8/%E6%A0%91%E5%BD%A2%E9%80%9A%E7%94%A8.c
     // int remaining_processes = numprocs, half, remainder;
     // while(remaining_processes != 1){
     //     half = remaining_processes / 2;
@@ -109,7 +111,7 @@ int main(int argc, char *argv[]){
     //     remaining_processes = half + remainder;
     // }
     int distance = 2;
-    unsigned int max_distance = next_power_of_two(numprocs);
+    unsigned int max_distance = 1 << ((int)ceil(log2(numprocs)));
     while(distance <= max_distance){
         if(myid % distance == 0){
             // Measure the time taken for the reduction
@@ -127,9 +129,16 @@ int main(int argc, char *argv[]){
     }
 
 
-    if(myid == 0){
-        printf("The total sum is: %f\n", total_sum);
-        free(a);
+
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    end_time = MPI_Wtime();
+
+    // 仅进程0输出时间
+    if (myid == 0) {
+        printf("Total sum: %f\n", total_sum);
+        printf("Proc=%d | Problem size=%d | Time=%.6f sec\n", 
+               numprocs, num_steps, end_time - start_time);
     }
     // Free allocated memory
     free(my_array);
@@ -141,4 +150,3 @@ int main(int argc, char *argv[]){
 }
 
 
- 
