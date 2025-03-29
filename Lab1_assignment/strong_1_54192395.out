@@ -1,3 +1,0 @@
-mpicc -std=c99 -g -O3 -o sum sum.c -lm
-Total sum: 2251799780130816.000000
-Proc=1 | Problem size=67108864 | Time=0.415646 sec
