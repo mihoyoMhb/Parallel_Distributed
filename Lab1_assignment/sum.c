@@ -86,12 +86,12 @@ int main(int argc, char *argv[]){
 
 
     srand(42 + myid); 
-    //int my_start = displacements[myid];
+    int my_start = displacements[myid];
     int my_count = sendcounts[myid];
     double *my_array = malloc(my_count * sizeof(double));
     for (int i = 0; i < my_count; i++) {
-        //my_array[i] = my_start + i + 1;
-        my_array[i] = rand(); // Random number generation
+        my_array[i] = my_start + i + 1;
+        //my_array[i] = rand(); // Random number generation
     }
     
     // Calculate the sum of the local array
