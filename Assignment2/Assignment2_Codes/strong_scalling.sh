@@ -6,7 +6,9 @@
 #SBATCH --output=strong_scaling_%j.out
 #SBATCH --error=strong_scaling_%j.err
 
+module load gcc/14.2.0
 module load openmpi/5.0.5
+make clean
 
 make clean
 make

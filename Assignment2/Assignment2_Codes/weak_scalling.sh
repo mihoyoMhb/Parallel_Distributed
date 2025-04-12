@@ -6,6 +6,7 @@
 #SBATCH --output=weak_scaling_iters_%j.out
 #SBATCH --error=weak_scaling_iters_%j.err
 
+module load gcc/14.2.0
 module load openmpi/5.0.5
 make clean
 make
