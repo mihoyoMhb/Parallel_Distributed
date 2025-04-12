@@ -16,8 +16,9 @@ make
 INPUTFILE="/home/mihoyohb/Datas/input8000000.txt"
 # 输出文件使用 /dev/null，这样程序不会实际写入数据
 OUTPUTFILE="/dev/null"
-# 迭代次数，根据实际需求进行调整，比如 10 次
-ITER=100
+# 迭代次数，根据实际需求进行调整，比如 10 
+# sbatch strong_scalling.sh to run one server
+ITER=5000
 
 echo "Running 1 MPI rank..."
 mpirun -n 1 ./stencil $INPUTFILE $OUTPUTFILE $ITER
