@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
 
     // 15. rank 0 输出计时结果，并在定义 PRODUCE_OUTPUT_FILE 时写入输出文件
     if (rank == 0) {
-        printf("Max Time across ranks (computation only): %.6f seconds\n", max_elapsed);
+        printf("%f\n", max_elapsed);
 #ifdef PRODUCE_OUTPUT_FILE
         if (write_output(output_file, final_output, num_values) != 0) {
             MPI_Abort(MPI_COMM_WORLD, 2);
