@@ -43,3 +43,39 @@ plt.grid(True)
 plt.xticks(ranks)
 plt.tight_layout()
 plt.show()
+
+
+# Ranks and average times
+ranks = [1, 2, 4, 6, 8, 10, 12, 14, 16]
+time_1m = [1.12886, 1.13886, 1.21228, 1.29563, 1.30558, 1.34201, 1.37492, 1.39909, 1.46107]
+time_2m = [2.62112, 2.24634, 2.26888, 2.39058, 2.46892, 2.5599, 2.63926, 2.70796, 2.79568]
+
+# Efficiency = T1 / Tp
+eff_1m = [time_1m[0] / t for t in time_1m]
+eff_2m = [time_2m[0] / t for t in time_2m]
+
+# Plot combined time figure
+plt.figure(figsize=(9, 5))
+plt.plot(ranks, time_1m, marker='o', label='1M Elements')
+plt.plot(ranks, time_2m, marker='s', label='2M Elements')
+plt.title('Weak Scaling: Average Computation Time')
+plt.xlabel('Number of MPI Ranks')
+plt.ylabel('Average Time (s)')
+plt.grid(True)
+plt.xticks(ranks)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Plot combined efficiency figure
+plt.figure(figsize=(9, 5))
+plt.plot(ranks, eff_1m, marker='o', label='1M Elements')
+plt.plot(ranks, eff_2m, marker='s', label='2M Elements')
+plt.title('Weak Scaling: Efficiency (T1 / Tp)')
+plt.xlabel('Number of MPI Ranks')
+plt.ylabel('Efficiency')
+plt.grid(True)
+plt.xticks(ranks)
+plt.legend()
+plt.tight_layout()
+plt.show()

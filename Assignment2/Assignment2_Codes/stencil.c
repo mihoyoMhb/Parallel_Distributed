@@ -106,18 +106,18 @@ int main(int argc, char **argv) {
 
     // 12. 主循环：进行 num_steps 次迭代计算
     for (int step = 0; step < num_steps; step++) {
-        MPI_Request reqs[4];
+        MPI_Request request[4];
         // 非阻塞接收更新 ghost 区域
         // 接收右侧 ghost：存放在 buf_current[eff_end, eff_end+EXTENT)
-        MPI_Irecv(&buf_current[eff_end], EXTENT, MPI_DOUBLE, right_rank, 0, MPI_COMM_WORLD, &reqs[0]);
+        MPI_Irecv(&buf_current[eff_end], EXTENT, MPI_DOUBLE, right_rank, 0, MPI_COMM_WORLD, &request[0]);
         // 接收左侧 ghost：存放在 buf_current[0, EXTENT)
-        MPI_Irecv(&buf_current[0], EXTENT, MPI_DOUBLE, left_rank, 0, MPI_COMM_WORLD, &reqs[1]);
+        MPI_Irecv(&buf_current[0], EXTENT, MPI_DOUBLE, left_rank, 0, MPI_COMM_WORLD, &request[1]);
 
         // 非阻塞发送自身边界数据
         // 发送左边界：buf_current[eff_start, eff_start+EXTENT)
-        MPI_Isend(&buf_current[eff_start], EXTENT, MPI_DOUBLE, left_rank, 0, MPI_COMM_WORLD, &reqs[2]);
+        MPI_Isend(&buf_current[eff_start], EXTENT, MPI_DOUBLE, left_rank, 0, MPI_COMM_WORLD, &request[2]);
         // 发送右边界：buf_current[eff_end-EXTENT, eff_end)
-        MPI_Isend(&buf_current[eff_end - EXTENT], EXTENT, MPI_DOUBLE, right_rank, 0, MPI_COMM_WORLD, &reqs[3]);
+        MPI_Isend(&buf_current[eff_end - EXTENT], EXTENT, MPI_DOUBLE, right_rank, 0, MPI_COMM_WORLD, &request[3]);
 
         // 与通信重叠，先计算内部安全区域（不依赖最新 ghost 数据），
         // 即有效区 [eff_start+EXTENT, eff_end-EXTENT)
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
         }
 
         // 等待非阻塞通信完成后，再计算边界区域
-        MPI_Waitall(4, reqs, MPI_STATUSES_IGNORE);
+        MPI_Waitall(4, request, MPI_STATUSES_IGNORE);
 
         // 计算左边界区域：有效区 [eff_start, eff_start+EXTENT)
         for (int i = eff_start; i < eff_start + EXTENT; i++) {
