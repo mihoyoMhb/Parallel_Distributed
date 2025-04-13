@@ -20,19 +20,19 @@ INPUTFILE="/home/mihoyohb/Datas/input8000000.txt"
 OUTPUTFILE="/dev/null"
 # 迭代次数，根据实际需求进行调整，比如 10 
 # sbatch strong_scalling.sh to run one server
-ITER=5000
+ITER=1000
 
 echo "Running 1 MPI rank..."
-mpirun -n 1 ./stencil $INPUTFILE $OUTPUTFILE $ITER
+mpirun --bind-to none -n 1 ./stencil $INPUTFILE $OUTPUTFILE $ITER
 
 echo "Running 2 MPI ranks..."
-mpirun -n 2 ./stencil $INPUTFILE $OUTPUTFILE $ITER
+mpirun --bind-to none -n 2 ./stencil $INPUTFILE $OUTPUTFILE $ITER
 
 echo "Running 4 MPI ranks..."
-mpirun -n 4 ./stencil $INPUTFILE $OUTPUTFILE $ITER
+mpirun --bind-to none -n 4 ./stencil $INPUTFILE $OUTPUTFILE $ITER
 
 echo "Running 8 MPI ranks..."
-mpirun -n 8 ./stencil $INPUTFILE $OUTPUTFILE $ITER
+mpirun --bind-to none -n 8 ./stencil $INPUTFILE $OUTPUTFILE $ITER
 
 echo "Running 16 MPI ranks..."
-mpirun -n 16 ./stencil $INPUTFILE $OUTPUTFILE $ITER
+mpirun --bind-to none -n 16 ./stencil $INPUTFILE $OUTPUTFILE $ITER

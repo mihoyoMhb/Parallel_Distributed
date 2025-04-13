@@ -21,24 +21,24 @@ BASE_ITER=1000
 
 # 1 rank => ITER = 1 × BASE_ITER
 echo "1 rank, iteration=$BASE_ITER"
-mpirun -n 1 ./stencil $INPUTFILE $OUTPUTFILE $BASE_ITER
+mpirun --bind-to none -n 1 ./stencil $INPUTFILE $OUTPUTFILE $BASE_ITER
 
 # 2 ranks => ITER = 2 × BASE_ITER
 IT2=$((BASE_ITER * 2))
 echo "2 ranks, iteration=$IT2"
-mpirun -n 2 ./stencil $INPUTFILE $OUTPUTFILE $IT2
+mpirun --bind-to none -n 2 ./stencil $INPUTFILE $OUTPUTFILE $IT2
 
 # 4 ranks => ITER = 4 × BASE_ITER
 IT4=$((BASE_ITER * 4))
 echo "4 ranks, iteration=$IT4"
-mpirun -n 4 ./stencil $INPUTFILE $OUTPUTFILE $IT4
+mpirun --bind-to none -n 4 ./stencil $INPUTFILE $OUTPUTFILE $IT4
 
 # 8 ranks => ITER = 8 × BASE_ITER
 IT8=$((BASE_ITER * 8))
 echo "8 ranks, iteration=$IT8"
-mpirun -n 8 ./stencil $INPUTFILE $OUTPUTFILE $IT8
+mpirun --bind-to none -n 8 ./stencil $INPUTFILE $OUTPUTFILE $IT8
 
 # 16 ranks => ITER = 16 × BASE_ITER
 IT16=$((BASE_ITER * 16))
 echo "16 ranks, iteration=$IT16"
-mpirun -n 16 ./stencil $INPUTFILE $OUTPUTFILE $IT16
+mpirun --bind-to none -n 16 ./stencil $INPUTFILE $OUTPUTFILE $IT16
