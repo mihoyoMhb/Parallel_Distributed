@@ -36,12 +36,8 @@ int main(int argc, char **argv) {
 
     // 2. Only rank 0 reads input data
     double *global_input = NULL;
-    int num_values = 0;
-    if (rank == 0) {
-        if ((num_values = read_input(input_file, &global_input)) < 0) {
-            MPI_Abort(MPI_COMM_WORLD, 2);
-        }
-    }
+    int num_values = read_input(input_file, &global_input);
+
 
     // 3. Broadcast num_values to all processes
     MPI_Bcast(&num_values, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -59,15 +55,15 @@ int main(int argc, char **argv) {
 
     // 6. Set up distribution information for Scatter/Gather (sendcounts and displs)
     int *sendcounts = (int*)malloc(size * sizeof(int));
-    int *displs     = (int*)malloc(size * sizeof(int));
-    if (!sendcounts || !displs) {
+    int *displacement     = (int*)malloc(size * sizeof(int));
+    if (!sendcounts || !displacement) {
         perror("malloc failed");
-        MPI_Abort(MPI_COMM_WORLD, 2);
+        return 2;
     }
     int offset = 0;
     for (int i = 0; i < size; i++) {
         sendcounts[i] = (i < rem) ? (base + 1) : base;
-        displs[i] = offset;
+        displacement[i] = offset;
         offset += sendcounts[i];
     }
 
@@ -78,10 +74,7 @@ int main(int argc, char **argv) {
     // and https://github.com/xlite-dev/CUDA-Learn-Notes?tab=readme-ov-file
     double *buf_current = (double*)malloc((local_N + 2*EXTENT) * sizeof(double));
     double *buf_next    = (double*)malloc((local_N + 2*EXTENT) * sizeof(double));
-    if (!buf_current || !buf_next) {
-        perror("malloc failed");
-        MPI_Abort(MPI_COMM_WORLD, 2);
-    }
+
 
     // 8. Distribute global data to each process,
     //    valid data is stored in buf_current[EXTENT, EXTENT+local_N)
@@ -89,7 +82,7 @@ int main(int argc, char **argv) {
     // Usage learnt from the tutorial, the link: https://rookiehpc.org/mpi/docs/mpi_scatterv/index.html
     // MPI_Scatterv(a, sendcounts, displacements, MPI_DOUBLE, my_array, my_array_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Scatterv(
-        global_input, sendcounts, displs, MPI_DOUBLE,
+        global_input, sendcounts, displacement, MPI_DOUBLE,
         &buf_current[EXTENT],
         local_N, MPI_DOUBLE,
         0, MPI_COMM_WORLD
@@ -141,23 +134,8 @@ int main(int argc, char **argv) {
         // Wait for non-blocking communication to complete, then compute boundary regions
         MPI_Waitall(4, request, MPI_STATUSES_IGNORE);
 
-        // // Compute left boundary region: valid region [eff_start, eff_start+EXTENT)
-        // for (int i = eff_start; i < eff_start + EXTENT; i++) {
-        //     double sum = 0.0;
-        //     for (int j = -EXTENT; j <= EXTENT; j++) {
-        //         sum += STENCIL[j + EXTENT] * buf_current[i + j];
-        //     }
-        //     buf_next[i] = sum;
-        // }
-        // // Compute right boundary region: valid region [eff_end-EXTENT, eff_end)
-        // for (int i = eff_end - EXTENT; i < eff_end; i++) {
-        //     double sum = 0.0;
-        //     for (int j = -EXTENT; j <= EXTENT; j++) {
-        //         sum += STENCIL[j + EXTENT] * buf_current[i + j];
-        //     }
-        //     buf_next[i] = sum;
-        // }
-        // 
+        // Compute left boundary region: valid region [eff_start, eff_start+EXTENT)
+        // and compute right boundary region: valid region [eff_end-EXTENT, eff_end)
         int offsets[2] = {eff_start, eff_end - EXTENT};
         for (int region = 0; region < 2; region++) {
             for (int idx = 0; idx < EXTENT; idx++) {
@@ -192,13 +170,13 @@ int main(int argc, char **argv) {
         final_output = (double*)malloc(num_values * sizeof(double));
         if (!final_output) {
             perror("malloc failed");
-            MPI_Abort(MPI_COMM_WORLD, 2);
+            return 2;
         }
     }
     MPI_Gatherv(
         &buf_current[eff_start],  // Only send valid region data
         local_N, MPI_DOUBLE,
-        final_output, sendcounts, displs, MPI_DOUBLE,
+        final_output, sendcounts, displacement, MPI_DOUBLE,
         0, MPI_COMM_WORLD
     );
 
@@ -207,7 +185,7 @@ int main(int argc, char **argv) {
         printf("%f\n", max_elapsed);
 #ifdef PRODUCE_OUTPUT_FILE
         if (write_output(output_file, final_output, num_values) != 0) {
-            MPI_Abort(MPI_COMM_WORLD, 2);
+            return 2;
         }
 #endif
         free(final_output);
@@ -217,7 +195,7 @@ int main(int argc, char **argv) {
     free(buf_current);
     free(buf_next);
     free(sendcounts);
-    free(displs);
+    free(displacement);
 
     MPI_Finalize();
     return 0;
