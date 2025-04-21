@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
 
     // 12. Main loop: perform num_steps iterations of computation
     for (int step = 0; step < num_steps; step++) {
-        // Usage: learnt from the tutorial, the link: https://rookiehpc.org/mpi/docs/mpi_irecv/index.html 
+        // Usage: the tutorial link: https://rookiehpc.org/mpi/docs/mpi_irecv/index.html 
         // and https://www.mpich.org/static/docs/v4.1/www3/MPI_Isend.html
         MPI_Request request[4];
         // Non-blocking receive to update ghost regions
