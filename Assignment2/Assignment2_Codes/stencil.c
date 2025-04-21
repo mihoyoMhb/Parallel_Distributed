@@ -73,6 +73,9 @@ int main(int argc, char **argv) {
 
     // 7. Allocate double buffers, each of size (local_N + 2*EXTENT)
     // Padding is done by adding EXTENT to the left and right of the local data
+    // ***Double buffer strategy*** inspired by lecture notes and github code
+    // Source: https://github.com/ifromeast/cuda_learning/blob/main/03_gemm/sgemm_v3.cu
+    // and https://github.com/xlite-dev/CUDA-Learn-Notes?tab=readme-ov-file
     double *buf_current = (double*)malloc((local_N + 2*EXTENT) * sizeof(double));
     double *buf_next    = (double*)malloc((local_N + 2*EXTENT) * sizeof(double));
     if (!buf_current || !buf_next) {
