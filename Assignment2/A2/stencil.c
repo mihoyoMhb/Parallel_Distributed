@@ -142,20 +142,17 @@ int main(int argc, char **argv) {
         MPI_Waitall(4, request, MPI_STATUSES_IGNORE);
 
         // Compute left boundary region: valid region [eff_start, eff_start+EXTENT)
-        for (int i = eff_start; i < eff_start + EXTENT; i++) {
-            double sum = 0.0;
-            for (int j = -EXTENT; j <= EXTENT; j++) {
-                sum += STENCIL[j + EXTENT] * buf_current[i + j];
+        // and compute right boundary region: valid region [eff_end-EXTENT, eff_end)
+        int offsets[2] = {eff_start, eff_end - EXTENT};
+        for (int region = 0; region < 2; region++) {
+            for (int idx = 0; idx < EXTENT; idx++) {
+                int i = offsets[region] + idx;
+                double sum = 0.0;
+                for (int j = -EXTENT; j <= EXTENT; j++) {
+                    sum += STENCIL[j + EXTENT] * buf_current[i + j];
+                }
+                buf_next[i] = sum;
             }
-            buf_next[i] = sum;
-        }
-        // Compute right boundary region: valid region [eff_end-EXTENT, eff_end)
-        for (int i = eff_end - EXTENT; i < eff_end; i++) {
-            double sum = 0.0;
-            for (int j = -EXTENT; j <= EXTENT; j++) {
-                sum += STENCIL[j + EXTENT] * buf_current[i + j];
-            }
-            buf_next[i] = sum;
         }
 
         // Using double buffer strategy to swap buf_current and buf_next pointers, no need for memcpy
