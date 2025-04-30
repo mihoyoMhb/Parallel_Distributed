@@ -29,31 +29,32 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // 1. Parse command line arguments
     char *input_file = argv[1];
     char *output_file = argv[2];
     int num_steps = atoi(argv[3]);
 
-    // 2. Only rank 0 reads input data
+    // Only rank 0 reads input data
     double *global_input = NULL;
     int num_values = read_input(input_file, &global_input);
 
 
-    // 3. Broadcast num_values to all processes
+    // Broadcast num_values to all processes
     MPI_Bcast(&num_values, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // 4. Set up stencil parameters
+    // Set up stencil parameters
     double h = 2.0 * PI / num_values;
     const double STENCIL[STENCIL_WIDTH] = {
         1.0/(12*h), -8.0/(12*h), 0.0, 8.0/(12*h), -1.0/(12*h)
     };
 
-    // 5. Calculate local data size for each process
+    // Calculate local data size for each process.
+    // This one seems useless for requirement in the assignment
+    // But we keep it for robustness
     int base = num_values / size;
-    int rem  = num_values % size;
-    int local_N = (rank < rem) ? (base + 1) : base;
+    int remainder  = num_values % size;
+    int local_N = (rank < remainder) ? (base + 1) : base;
 
-    // 6. Set up distribution information for Scatter/Gather (sendcounts and displs)
+    // Set up distribution information for Scatter/Gather (sendcounts and displs)
     int *sendcounts = (int*)malloc(size * sizeof(int));
     int *displacement     = (int*)malloc(size * sizeof(int));
     if (!sendcounts || !displacement) {
@@ -62,12 +63,12 @@ int main(int argc, char **argv) {
     }
     int offset = 0;
     for (int i = 0; i < size; i++) {
-        sendcounts[i] = (i < rem) ? (base + 1) : base;
+        sendcounts[i] = (i < remainder) ? (base + 1) : base;
         displacement[i] = offset;
         offset += sendcounts[i];
     }
 
-    // 7. Allocate double buffers, each of size (local_N + 2*EXTENT)
+    // Allocate double buffers, each of size (local_N + 2*EXTENT)
     // Padding is done by adding EXTENT to the left and right of the local data
     // ***Double buffer strategy*** inspired by lecture notes and github code
     // Source: https://github.com/ifromeast/cuda_learning/blob/main/03_gemm/sgemm_v3.cu
@@ -76,7 +77,7 @@ int main(int argc, char **argv) {
     double *buf_next    = (double*)malloc((local_N + 2*EXTENT) * sizeof(double));
 
 
-    // 8. Distribute global data to each process,
+    // Distribute global data to each process,
     //    valid data is stored in buf_current[EXTENT, EXTENT+local_N)
     // // Scatter the data to all processes
     // Usage learnt from the tutorial, the link: https://rookiehpc.org/mpi/docs/mpi_scatterv/index.html
@@ -92,24 +93,23 @@ int main(int argc, char **argv) {
         global_input = NULL;
     }
 
-    // 9. Calculate left and right neighbor ranks (periodic boundary)
+    // Calculate left and right neighbor ranks (periodic boundary)
     int left_rank  = (rank - 1 + size) % size;
     int right_rank = (rank + 1) % size;
 
-    // 10. Define index range of valid data in the buffer
+    // Define index range of valid data in the buffer
     int eff_start = EXTENT; // valid region starts at EXTENT, we need left 2 elements.
     int eff_end   = EXTENT + local_N;  // valid region length = local_N
 
-    // 11. Ensure timing starts after initial data distribution is complete (timing excludes input and initial distribution)
+    // Ensure timing starts after initial data distribution is complete (timing excludes input and initial distribution)
     MPI_Barrier(MPI_COMM_WORLD);
     double start_time = MPI_Wtime();
 
-    // 12. Main loop: perform num_steps iterations of computation
+    // Main loop: perform num_steps iterations of computation
     for (int step = 0; step < num_steps; step++) {
         // Usage: the tutorial link: https://rookiehpc.org/mpi/docs/mpi_irecv/index.html 
         // and https://www.mpich.org/static/docs/v4.1/www3/MPI_Isend.html
         MPI_Request request[4];
-        // Non-blocking receive to update ghost regions
         // Receive right pad: store in buf_current[eff_end, eff_end+EXTENT)
         MPI_Irecv(&buf_current[eff_end], EXTENT, MPI_DOUBLE, right_rank, 0, MPI_COMM_WORLD, &request[0]);
         // Receive left pad: store in buf_current[0, EXTENT)
@@ -148,15 +148,15 @@ int main(int argc, char **argv) {
             }
         }
 
-        // Using double buffer strategy to swap buf_current and buf_next pointers, no need for memcpy
+        // Using double buffer strategy to swap buf_current and buf_next pointers
         // Origin: lecture notes and provided code
         double *tmp = buf_current;
         buf_current = buf_next;
         buf_next = tmp;
     }
 
-    // 13. After iterations are complete, call Barrier to ensure all processes have finished computation,
-    //     then stop timing (excluding final data collection time)
+    // After iterations are complete, call Barrier to ensure all processes have finished computation,
+    // then stop timing (excluding final data collection time)
     MPI_Barrier(MPI_COMM_WORLD);
     double end_time = MPI_Wtime();
     double local_elapsed = end_time - start_time;
@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
     // Use MPI_Reduce to find the maximum elapsed time across all processes
     MPI_Reduce(&local_elapsed, &max_elapsed, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    // 14. Collect final results after timing ends (not included in timing)
+    // Collect final results after timing ends (not included in timing)
     double *final_output = NULL;
     if (rank == 0) {
         final_output = (double*)malloc(num_values * sizeof(double));
@@ -180,7 +180,7 @@ int main(int argc, char **argv) {
         0, MPI_COMM_WORLD
     );
 
-    // 15. Rank 0 outputs timing results, and writes to output file when PRODUCE_OUTPUT_FILE is defined
+    // Rank 0 outputs timing results, and writes to output file when PRODUCE_OUTPUT_FILE is defined
     if (rank == 0) {
         printf("%f\n", max_elapsed);
 #ifdef PRODUCE_OUTPUT_FILE
@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
         free(final_output);
     }
 
-    // 16. Free allocated resources
+    // Free allocated resources
     free(buf_current);
     free(buf_next);
     free(sendcounts);
