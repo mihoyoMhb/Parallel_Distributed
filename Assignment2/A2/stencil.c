@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
 
     // After iterations are complete, call Barrier to ensure all processes have finished computation,
     // then stop timing (excluding final data collection time)
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
     double end_time = MPI_Wtime();
     double local_elapsed = end_time - start_time;
     double max_elapsed;
