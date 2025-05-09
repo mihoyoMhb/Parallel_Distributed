@@ -1,0 +1,46 @@
+Performance Reports: This version of Allinea Performance Reports is over a year old.
+Performance Reports: Allinea only provide support for the most recent version of Allinea Performance Reports.
+Performance Reports: Please consider upgrading.
+Performance Reports: The MPI processes are taking a long time to connect to Allinea Performance Reports (r166.uppmax.uu.se:4242) during startup.
+Performance Reports: 
+Performance Reports: Mon May 5 23:07:48 2025 Startup has timed out. Aborting.
+Performance Reports: 
+Performance Reports: Note: You must allow connections to port 4242 from the nodes through your firewall.
+Performance Reports: 
+Performance Reports: Try starting the program at the command prompt then contact Allinea for assistance.
+Performance Reports: 
+Performance Reports: Some processes may remain after aborting and need to be manually killed.
+Performance Reports: 
+Performance Reports: You can disable this timeout by setting the ALLINEA_NO_TIMEOUT environment variable before you launch Allinea Performance Reports.
+Performance Reports: This version of Allinea Performance Reports is over a year old.
+Performance Reports: Allinea only provide support for the most recent version of Allinea Performance Reports.
+Performance Reports: Please consider upgrading.
+Performance Reports: The MPI processes are taking a long time to connect to Allinea Performance Reports (r166.uppmax.uu.se:4242) during startup.
+Performance Reports: 
+Performance Reports: Mon May 5 23:14:25 2025 Startup has timed out. Aborting.
+Performance Reports: 
+Performance Reports: Note: You must allow connections to port 4242 from the nodes through your firewall.
+Performance Reports: 
+Performance Reports: Try starting the program at the command prompt then contact Allinea for assistance.
+Performance Reports: 
+Performance Reports: Some processes may remain after aborting and need to be manually killed.
+Performance Reports: 
+Performance Reports: You can disable this timeout by setting the ALLINEA_NO_TIMEOUT environment variable before you launch Allinea Performance Reports.
+Performance Reports: This version of Allinea Performance Reports is over a year old.
+Performance Reports: Allinea only provide support for the most recent version of Allinea Performance Reports.
+Performance Reports: Please consider upgrading.
+Performance Reports: The MPI processes are taking a long time to connect to Allinea Performance Reports (r166.uppmax.uu.se:4242) during startup.
+Performance Reports: 
+Performance Reports: Mon May 5 23:21:03 2025 Startup has timed out. Aborting.
+Performance Reports: 
+Performance Reports: Note: You must allow connections to port 4242 from the nodes through your firewall.
+Performance Reports: 
+Performance Reports: Try starting the program at the command prompt then contact Allinea for assistance.
+Performance Reports: 
+Performance Reports: Some processes may remain after aborting and need to be manually killed.
+Performance Reports: 
+Performance Reports: You can disable this timeout by setting the ALLINEA_NO_TIMEOUT environment variable before you launch Allinea Performance Reports.
+Performance Reports: This version of Allinea Performance Reports is over a year old.
+Performance Reports: Allinea only provide support for the most recent version of Allinea Performance Reports.
+Performance Reports: Please consider upgrading.
+slurmstepd: error: *** JOB 55088641 ON r166 CANCELLED AT 2025-05-05T23:22:49 DUE TO TIME LIMIT ***

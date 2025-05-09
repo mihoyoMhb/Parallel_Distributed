@@ -4,7 +4,7 @@
 #include <string.h> 
 #include "quicksort.h" 
 #include "pivot.h"     
-
+// mpiexec -n 1 ./parallel_quicksort /home/mihoyohb/Datas/A3/input500000000.txt /dev/null 2
 int main(int argc, char *argv[]) {
     int rank, size;
     MPI_Init(&argc, &argv);

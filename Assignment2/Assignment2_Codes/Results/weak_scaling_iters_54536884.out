@@ -1,0 +1,220 @@
+rm -f stencil
+mpicc -std=c99 -g -O3 -o stencil stencil.c -lm
+========== Testing input size: 1000000 ==========
+1 ranks, iteration=1000
+  Run 1:
+    Time: 1.113244 s
+  Run 2:
+    Time: 1.194347 s
+  Run 3:
+    Time: 1.107215 s
+  Run 4:
+    Time: 1.115805 s
+  Run 5:
+    Time: 1.113705 s
+  Average time for 1 ranks: 1.12886 s
+2 ranks, iteration=2000
+  Run 1:
+    Time: 1.191126 s
+  Run 2:
+    Time: 1.150253 s
+  Run 3:
+    Time: 1.078145 s
+  Run 4:
+    Time: 1.126745 s
+  Run 5:
+    Time: 1.148040 s
+  Average time for 2 ranks: 1.13886 s
+4 ranks, iteration=4000
+  Run 1:
+    Time: 1.209058 s
+  Run 2:
+    Time: 1.139095 s
+  Run 3:
+    Time: 1.197885 s
+  Run 4:
+    Time: 1.324865 s
+  Run 5:
+    Time: 1.190500 s
+  Average time for 4 ranks: 1.21228 s
+6 ranks, iteration=6000
+  Run 1:
+    Time: 1.302732 s
+  Run 2:
+    Time: 1.285569 s
+  Run 3:
+    Time: 1.328400 s
+  Run 4:
+    Time: 1.261971 s
+  Run 5:
+    Time: 1.299483 s
+  Average time for 6 ranks: 1.29563 s
+8 ranks, iteration=8000
+  Run 1:
+    Time: 1.303801 s
+  Run 2:
+    Time: 1.301499 s
+  Run 3:
+    Time: 1.299476 s
+  Run 4:
+    Time: 1.292308 s
+  Run 5:
+    Time: 1.330834 s
+  Average time for 8 ranks: 1.30558 s
+10 ranks, iteration=10000
+  Run 1:
+    Time: 1.380046 s
+  Run 2:
+    Time: 1.343331 s
+  Run 3:
+    Time: 1.335568 s
+  Run 4:
+    Time: 1.364113 s
+  Run 5:
+    Time: 1.287000 s
+  Average time for 10 ranks: 1.34201 s
+12 ranks, iteration=12000
+  Run 1:
+    Time: 1.362447 s
+  Run 2:
+    Time: 1.356912 s
+  Run 3:
+    Time: 1.329529 s
+  Run 4:
+    Time: 1.425372 s
+  Run 5:
+    Time: 1.400330 s
+  Average time for 12 ranks: 1.37492 s
+14 ranks, iteration=14000
+  Run 1:
+    Time: 1.413492 s
+  Run 2:
+    Time: 1.464514 s
+  Run 3:
+    Time: 1.361409 s
+  Run 4:
+    Time: 1.389865 s
+  Run 5:
+    Time: 1.366170 s
+  Average time for 14 ranks: 1.39909 s
+16 ranks, iteration=16000
+  Run 1:
+    Time: 1.407004 s
+  Run 2:
+    Time: 1.447841 s
+  Run 3:
+    Time: 1.474207 s
+  Run 4:
+    Time: 1.438702 s
+  Run 5:
+    Time: 1.537602 s
+  Average time for 16 ranks: 1.46107 s
+========== Testing input size: 2000000 ==========
+1 ranks, iteration=1000
+  Run 1:
+    Time: 2.616281 s
+  Run 2:
+    Time: 2.616258 s
+  Run 3:
+    Time: 2.619581 s
+  Run 4:
+    Time: 2.620500 s
+  Run 5:
+    Time: 2.633009 s
+  Average time for 1 ranks: 2.62112 s
+2 ranks, iteration=2000
+  Run 1:
+    Time: 2.267335 s
+  Run 2:
+    Time: 2.207354 s
+  Run 3:
+    Time: 2.236764 s
+  Run 4:
+    Time: 2.286360 s
+  Run 5:
+    Time: 2.233902 s
+  Average time for 2 ranks: 2.24634 s
+4 ranks, iteration=4000
+  Run 1:
+    Time: 2.224548 s
+  Run 2:
+    Time: 2.249170 s
+  Run 3:
+    Time: 2.265750 s
+  Run 4:
+    Time: 2.347157 s
+  Run 5:
+    Time: 2.257740 s
+  Average time for 4 ranks: 2.26888 s
+6 ranks, iteration=6000
+  Run 1:
+    Time: 2.412955 s
+  Run 2:
+    Time: 2.414718 s
+  Run 3:
+    Time: 2.374396 s
+  Run 4:
+    Time: 2.382481 s
+  Run 5:
+    Time: 2.368317 s
+  Average time for 6 ranks: 2.39058 s
+8 ranks, iteration=8000
+  Run 1:
+    Time: 2.588198 s
+  Run 2:
+    Time: 2.456041 s
+  Run 3:
+    Time: 2.356321 s
+  Run 4:
+    Time: 2.465158 s
+  Run 5:
+    Time: 2.478874 s
+  Average time for 8 ranks: 2.46892 s
+10 ranks, iteration=10000
+  Run 1:
+    Time: 2.684535 s
+  Run 2:
+    Time: 2.582835 s
+  Run 3:
+    Time: 2.490354 s
+  Run 4:
+    Time: 2.500894 s
+  Run 5:
+    Time: 2.540870 s
+  Average time for 10 ranks: 2.5599 s
+12 ranks, iteration=12000
+  Run 1:
+    Time: 2.611083 s
+  Run 2:
+    Time: 2.600902 s
+  Run 3:
+    Time: 2.695776 s
+  Run 4:
+    Time: 2.709956 s
+  Run 5:
+    Time: 2.578569 s
+  Average time for 12 ranks: 2.63926 s
+14 ranks, iteration=14000
+  Run 1:
+    Time: 2.686335 s
+  Run 2:
+    Time: 2.720165 s
+  Run 3:
+    Time: 2.707767 s
+  Run 4:
+    Time: 2.691661 s
+  Run 5:
+    Time: 2.733934 s
+  Average time for 14 ranks: 2.70796 s
+16 ranks, iteration=16000
+  Run 1:
+    Time: 2.795303 s
+  Run 2:
+    Time: 2.833834 s
+  Run 3:
+    Time: 2.784876 s
+  Run 4:
+    Time: 2.782515 s
+  Run 5:
+    Time: 2.781933 s
+  Average time for 16 ranks: 2.79568 s
