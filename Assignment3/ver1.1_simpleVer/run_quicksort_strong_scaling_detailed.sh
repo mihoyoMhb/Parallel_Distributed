@@ -16,7 +16,7 @@ make clean
 make
 
 # 定义程序和通用参数
-EXECUTABLE="./parallel_quicksort"
+EXECUTABLE="./quicksort"
 OUTPUTFILE="/dev/null"
 PROBLEM_SIZE="250000000" # 元素数量
 
