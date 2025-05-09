@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 
     if (rank == ROOT) {
         printf("%.6f\n", sort_time);
-        check_and_print(all_elements, n_total, output_file_name);
+        if(n_total <= 100) check_and_print(all_elements, n_total, output_file_name);
         // check_and_print assumes file operations succeed
         if (all_elements) {
             free(all_elements); 
