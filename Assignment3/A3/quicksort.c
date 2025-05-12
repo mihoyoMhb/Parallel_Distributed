@@ -44,7 +44,7 @@ int read_input(char *file_name, int **elements_ptr) {
 
     int n;
     if (fscanf(file, "%d", &n) != 1) {
-        fprintf(stderr, "Error reading problem size\n");
+        fprintf(stderr, "Error reading!!!\n");
         fclose(file);
         *elements_ptr = NULL;
         return -1;
@@ -58,14 +58,14 @@ int read_input(char *file_name, int **elements_ptr) {
 
     *elements_ptr = malloc(n * sizeof(int));
     if (!*elements_ptr) {
-        fprintf(stderr, "Memory allocation error\n");
+        fprintf(stderr, "Error reading!!!\n");
         fclose(file);
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
     for (int i = 0; i < n; ++i) {
         if (fscanf(file, "%d", &((*elements_ptr)[i])) != 1) {
-            fprintf(stderr, "Error reading element %d\n", i);
+            fprintf(stderr, "Error reading!!! %d\n", i);
             free(*elements_ptr);
             *elements_ptr = NULL;
             fclose(file);
@@ -82,7 +82,6 @@ int check_and_print(int *elements, int n, char *file_name) {
     sorted_ascending(elements, n);
 
     FILE *file = fopen(file_name, "w");
-    // Assume file opens successfully
 
     for (int i = 0; i < n; ++i) {
         fprintf(file, "%d", elements[i]);
@@ -101,17 +100,23 @@ int distribute_from_root(int *all_elements_on_root, int n_total, int **my_elemen
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
-    int *sendcounts = NULL, *displs = NULL, local_n;
+    int *sendcounts = NULL, *displacements = NULL, local_n;
 
     if (rank == ROOT) {
         sendcounts = calloc(comm_size, sizeof(int));
-        displs     = calloc(comm_size, sizeof(int));
+        displacements     = calloc(comm_size, sizeof(int));
+        // Still the same as previous assignment 1 2
+        // Distribute elements evenly across processes
         int base    = n_total / comm_size;
-        int rem     = n_total % comm_size;
+        int remainder     = n_total % comm_size;
         int offset  = 0;
         for (int i = 0; i < comm_size; i++) {
-            sendcounts[i] = base + (i < rem);
-            displs[i]     = offset;
+            if (i < remainder) {
+                sendcounts[i] = base + 1;
+            } else {
+                sendcounts[i] = base;
+            }
+            displacements[i]     = offset;
             offset       += sendcounts[i];
         }
     }
@@ -119,19 +124,14 @@ int distribute_from_root(int *all_elements_on_root, int n_total, int **my_elemen
     MPI_Scatter(sendcounts, 1, MPI_INT,
                 &local_n,    1, MPI_INT,
                 ROOT, MPI_COMM_WORLD);
-
-    if (local_n > 0) {
-        *my_elements_ptr = malloc(local_n * sizeof(int));
-    } else {
-        *my_elements_ptr = NULL;
-    }
-
-    MPI_Scatterv(all_elements_on_root, sendcounts, displs, MPI_INT,
+    *my_elements_ptr = malloc(local_n * sizeof(int));
+    // Scatter the elements to all processes
+    MPI_Scatterv(all_elements_on_root, sendcounts, displacements, MPI_INT,
                  *my_elements_ptr, local_n, MPI_INT,
                  ROOT, MPI_COMM_WORLD);
 
     free(sendcounts);
-    free(displs);
+    free(displacements);
     return local_n;
 }
 
@@ -140,11 +140,11 @@ void gather_on_root(int *all_elements_buffer_on_root, int *my_elements, int loca
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
-    int *recvcounts = NULL, *displs = NULL;
+    int *recvcounts = NULL, *displacements = NULL;
 
     if (rank == ROOT) {
         recvcounts = malloc(comm_size * sizeof(int));
-        displs     = malloc(comm_size * sizeof(int));
+        displacements     = malloc(comm_size * sizeof(int));
     }
 
     MPI_Gather(&local_n, 1, MPI_INT,
@@ -154,17 +154,17 @@ void gather_on_root(int *all_elements_buffer_on_root, int *my_elements, int loca
     if (rank == ROOT) {
         int offset = 0;
         for (int i = 0; i < comm_size; i++) {
-            displs[i] = offset;
+            displacements[i] = offset;
             offset   += recvcounts[i];
         }
     }
 
     MPI_Gatherv(my_elements, local_n, MPI_INT,
-                all_elements_buffer_on_root, recvcounts, displs, MPI_INT,
+                all_elements_buffer_on_root, recvcounts, displacements, MPI_INT,
                 ROOT, MPI_COMM_WORLD);
 
     free(recvcounts);
-    free(displs);
+    free(displacements);
 }
 
 /**
@@ -280,22 +280,16 @@ int* merge_data(int *keep_buf_start_ptr, int keep_count, int *recv_buf, int recv
     if (new_n > 0) {
         // Allocate new array for merged data
         new_elements_array = malloc(new_n * sizeof(int));
-        if (!new_elements_array) {
-            if (recv_buf) free(recv_buf);
-            MPI_Abort(communicator, 1);
-        }
-
         if (keep_count > 0 && recv_count > 0) {
             // Merge two sorted arrays
-            int *temp_kept = malloc(keep_count * sizeof(int));
-            if (!temp_kept) {
-                if (recv_buf) free(recv_buf);
-                free(new_elements_array);
+            int *temp_array = malloc(keep_count * sizeof(int));
+            if(!temp_array || !new_elements_array) {
+                fprintf(stderr, "Memory allocation error in merge_data\n");
                 MPI_Abort(communicator, 1);
             }
-            memcpy(temp_kept, keep_buf_start_ptr, keep_count * sizeof(int));
-            merge_ascending(temp_kept, keep_count, recv_buf, recv_count, new_elements_array);
-            free(temp_kept);
+            memcpy(temp_array, keep_buf_start_ptr, keep_count * sizeof(int));
+            merge_ascending(temp_array, keep_count, recv_buf, recv_count, new_elements_array);
+            free(temp_array);
         } else if (keep_count > 0) {
             // Only kept data
             memcpy(new_elements_array, keep_buf_start_ptr, keep_count * sizeof(int));
