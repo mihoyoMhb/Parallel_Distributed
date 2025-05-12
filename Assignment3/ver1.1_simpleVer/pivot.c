@@ -72,28 +72,20 @@ int select_pivot_mean_median(int *elements, int n, MPI_Comm communicator) {
     }
 
     int *all_medians = NULL;
-    if (rank == ROOT) {
-        if (size > 0) { // Only allocate if communicator is not empty
-            all_medians = (int *)malloc(size * sizeof(int));
-            if (!all_medians) {
-                fprintf(stderr, "ROOT: Failed to allocate memory for all_medians in select_pivot_mean_median\n");
-                MPI_Abort(communicator, 1);
-            }
-        }
+    if (rank == ROOT && size > 0) { 
+        all_medians = (int *)malloc(size * sizeof(int));
     }
 
     MPI_Gather(&local_median, 1, MPI_INT, all_medians, 1, MPI_INT, ROOT, communicator);
 
     int pivot_val = 0; 
     if (rank == ROOT) {
-        if (size > 0) {
-            long long sum_of_medians = 0; 
-            for (int i = 0; i < size; ++i) {
-                sum_of_medians += all_medians[i];
-            }
-            pivot_val = (int)(sum_of_medians / size); // Integer division is intentional
-            if (all_medians) free(all_medians); // Free only if allocated
+        long long sum_of_medians = 0;
+        for (int i = 0; i < size; ++i) {
+            sum_of_medians += all_medians[i];
         }
+        pivot_val = (int)(sum_of_medians / size);
+        free(all_medians);
     }
 
     MPI_Bcast(&pivot_val, 1, MPI_INT, ROOT, communicator);
@@ -111,25 +103,17 @@ int select_pivot_median_median(int *elements, int n, MPI_Comm communicator) {
     }
     
     int *all_medians = NULL;
-    if (rank == ROOT) {
-        if (size > 0) { // Only allocate if communicator is not empty
-            all_medians = (int *)malloc(size * sizeof(int));
-            if (!all_medians) {
-                fprintf(stderr, "ROOT: Failed to allocate memory for all_medians in select_pivot_median_median\n");
-                MPI_Abort(communicator, 1);
-            }
-        }
+    if (rank == ROOT && size > 0) { // Only allocate if communicator is not empty
+        all_medians = (int *)malloc(size * sizeof(int));
     }
 
     MPI_Gather(&local_median, 1, MPI_INT, all_medians, 1, MPI_INT, ROOT, communicator);
 
     int pivot_val = 0; 
     if (rank == ROOT) {
-        if (size > 0) {
-            qsort(all_medians, size, sizeof(int), compare);
-            pivot_val = get_median(all_medians, size); 
-            if (all_medians) free(all_medians); // Free only if allocated
-        }
+        qsort(all_medians, size, sizeof(int), compare);
+        pivot_val = get_median(all_medians, size); 
+        free(all_medians);
     }
 
     MPI_Bcast(&pivot_val, 1, MPI_INT, ROOT, communicator);
