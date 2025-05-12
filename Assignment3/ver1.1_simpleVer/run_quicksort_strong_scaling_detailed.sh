@@ -3,9 +3,9 @@
 #SBATCH -N 1                 # 请求 1 个节点
 #SBATCH -n 16                # 为作业请求最多 16 个 MPI rank (进程槽)
 #SBATCH -c 1                 # 每个 MPI rank 使用 1 个核心
-#SBATCH --time=03:00:00      # 预计运行时间 (请根据实际情况调整，组合测试可能需要更久)
-#SBATCH --output=quicksort_strong_scaling_detailed_%j.out
-#SBATCH --error=quicksort_strong_scaling_detailed_%j.err
+#SBATCH --time=05:00:00      # 预计运行时间 (由于增加了测试文件，时间已增加)
+#SBATCH --output=quicksort_strong_scaling_multi_size_%j.out
+#SBATCH --error=quicksort_strong_scaling_multi_size_%j.err
 
 # 加载所需模块 (版本号请根据您集群的实际情况确认)
 module load gcc/14.2.0   # 或者您集群上可用的 gcc 版本
@@ -16,18 +16,27 @@ make clean
 make
 
 # 定义程序和通用参数
-EXECUTABLE="./quicksort"
+EXECUTABLE="./quicksort" # 脚本中已有的可执行文件名
 OUTPUTFILE="/dev/null"
-PROBLEM_SIZE="250000000" # 元素数量
 
 # 定义输入文件数组
 declare -a INPUT_FILES=(
     "/crex/proj/mixed-precision/nobackup/A3/inputs/input250000000.txt"
     "/crex/proj/mixed-precision/nobackup/A3/inputs/backwards/input_backwards250000000.txt"
+    "/crex/proj/mixed-precision/nobackup/A3/inputs/input125000000.txt"
+    "/crex/proj/mixed-precision/nobackup/A3/inputs/backwards/input_backwards125000000.txt"
 )
 declare -a INPUT_FILE_DESCRIPTIONS=( # 用于日志输出
     "Sorted_Input_N250M"
     "Backwards_Input_N250M"
+    "Sorted_Input_N125M"
+    "Backwards_Input_N125M"
+)
+declare -a PROBLEM_SIZES=( # 对应每个输入文件的问题规模
+    "250000000"
+    "250000000"
+    "125000000"
+    "125000000"
 )
 
 # 定义主元选择策略数组
@@ -38,11 +47,10 @@ declare -a MPI_PROCESSES=(1 2 4 8 16)
 
 
 echo "======================================================================"
-echo "Parallel Quicksort - Detailed Strong Scaling Test"
-echo "Problem Size (N): $PROBLEM_SIZE elements"
+echo "Parallel Quicksort - Detailed Strong Scaling Test (Multiple Sizes)"
 echo "Output File: $OUTPUTFILE"
 echo "Current User: mihoyoMhb"
-echo "Submission Date (UTC): 2025-05-09 17:12:52 (User provided)" # Using user provided time
+echo "Submission Date (UTC): 2025-05-12 11:43:40" # User provided time
 echo "Actual Run Date: $(date)"
 echo "======================================================================"
 echo ""
@@ -51,23 +59,26 @@ echo ""
 for i in "${!INPUT_FILES[@]}"; do
     INPUTFILE=${INPUT_FILES[$i]}
     INPUT_DESC=${INPUT_FILE_DESCRIPTIONS[$i]}
+    CURRENT_PROBLEM_SIZE=${PROBLEM_SIZES[$i]}
 
     echo "######################################################################"
-    echo "Testing Input File: $INPUTFILE ($INPUT_DESC)"
+    echo "Testing Input File: $INPUTFILE"
+    echo "Description: $INPUT_DESC"
+    echo "Problem Size (N): $CURRENT_PROBLEM_SIZE elements"
     echo "######################################################################"
     echo ""
 
     # 中层循环：遍历主元选择策略
     for PIVOT_STRATEGY in "${PIVOT_STRATEGIES[@]}"; do
         echo "    =============================================================="
-        echo "    Testing Pivot Strategy: $PIVOT_STRATEGY"
+        echo "    Input: $INPUT_DESC, Pivot Strategy: $PIVOT_STRATEGY"
         echo "    =============================================================="
         echo ""
 
         # 内层循环：遍历MPI进程数
         for processes in "${MPI_PROCESSES[@]}"; do
             echo "        ------------------------------------------------------"
-            echo "        Input: $INPUT_DESC, Pivot Strategy: $PIVOT_STRATEGY, MPI Ranks: $processes"
+            echo "        Input: $INPUT_DESC, Problem Size: $CURRENT_PROBLEM_SIZE, Pivot: $PIVOT_STRATEGY, MPI Ranks: $processes"
             echo "        Command: mpiexec -n $processes $EXECUTABLE $INPUTFILE $OUTPUTFILE $PIVOT_STRATEGY"
             
             # 实际执行命令，您的程序应该会将运行时间打印到标准输出
