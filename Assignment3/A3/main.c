@@ -42,11 +42,9 @@ int main(int argc, char *argv[]) {
             FILE *out_file = fopen(output_file_name, "w");
             if (out_file) fclose(out_file); // Assuming success for stable cases
             printf("0.000000\n"); 
-            if(all_elements) free(all_elements); 
-            MPI_Finalize(); // Finalize ROOT
-            // Other processes will get n_total=0 and finalize too.
-            // Send a signal or rely on Bcast of n_total=0.
-            // Bcast n_total after this block to inform others.
+            if(all_elements) free(all_elements);
+            // Memory allocation error handling
+            MPI_Finalize(); 
         }
     }
 
@@ -75,13 +73,7 @@ int main(int argc, char *argv[]) {
 
     end_time = MPI_Wtime();
     sort_time = end_time - start_time;
-    
-    if (rank == ROOT) {
-        // Ensure all_elements is allocated for gathering if it was freed or never allocated (e.g. if n_total was initially 0 then changed)
-        // However, if n_total > 0, all_elements was allocated by read_input.
-        // If read_input resulted in n_total=0, we would have exited.
-        // So, all_elements should be valid if rank == ROOT and n_total > 0.
-    }
+
 
     gather_on_root(all_elements, my_elements, my_n);
     // gather_on_root handles its own critical memory allocation errors for metadata
