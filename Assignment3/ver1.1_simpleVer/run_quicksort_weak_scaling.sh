@@ -42,8 +42,8 @@ declare -a INPUT_FILE_BASENAMES=(
 )
 
 # 定义输入文件类型
-declare -a INPUT_TYPES=("sorted" "backwards")
-declare -a INPUT_TYPE_DESCRIPTIONS=("Sorted" "Backwards") # Simplified descriptions
+declare -a INPUT_TYPES=("random" "backwards")
+declare -a INPUT_TYPE_DESCRIPTIONS=("random" "Backwards") # Simplified descriptions
 
 # 定义主元选择策略数组
 declare -a PIVOT_STRATEGIES=(1 2 3)

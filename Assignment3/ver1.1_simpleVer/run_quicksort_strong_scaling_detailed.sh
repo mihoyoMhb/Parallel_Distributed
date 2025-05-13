@@ -27,9 +27,9 @@ declare -a INPUT_FILES=(
     "/crex/proj/mixed-precision/nobackup/A3/inputs/backwards/input_backwards125000000.txt"
 )
 declare -a INPUT_FILE_DESCRIPTIONS=( # 用于日志输出
-    "Sorted_Input_N250M"
+    "Random_Input_N250M"
     "Backwards_Input_N250M"
-    "Sorted_Input_N125M"
+    "Random_Input_N125M"
     "Backwards_Input_N125M"
 )
 declare -a PROBLEM_SIZES=( # 对应每个输入文件的问题规模
