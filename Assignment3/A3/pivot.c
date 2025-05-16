@@ -1,7 +1,7 @@
 #include "pivot.h"
 #include <mpi.h>
 #include <stdio.h>
-#include <stdlib.h> // For qsort, malloc, free, NULL
+#include <stdlib.h> 
 #include <limits.h> 
 
 // Compare function for qsort
@@ -43,7 +43,6 @@ int select_pivot(int pivot_strategy, int *elements, int n, MPI_Comm communicator
         case MEDIAN_MEDIAN: 
             return select_pivot_median_median(elements, n, communicator);
         default:
-            // Fallback to MEDIAN_ROOT for unknown strategy (as per previous logic, error message removed)
             return select_pivot_median_root(elements, n, communicator);
     }
 }
@@ -121,14 +120,5 @@ int select_pivot_median_median(int *elements, int n, MPI_Comm communicator) {
 }
 
 int select_pivot_smallest_root(int *elements, int n, MPI_Comm communicator) {
-    int rank;
-    MPI_Comm_rank(communicator, &rank);
-    int pivot_val = 0; 
-    if (rank == ROOT) {
-        if (n > 0 && elements != NULL) {
-            pivot_val = elements[0]; 
-        }
-    }
-    MPI_Bcast(&pivot_val, 1, MPI_INT, ROOT, communicator);
-    return get_larger_index(elements, n, pivot_val);
+    return 0; // This function is not implemented in the original code
 }

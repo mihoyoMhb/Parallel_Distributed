@@ -1,7 +1,7 @@
 #include "pivot.h"
 #include <mpi.h>
 #include <stdio.h>
-#include <stdlib.h> // For qsort, malloc, free, NULL
+#include <stdlib.h> 
 #include <limits.h> 
 
 // Compare function for qsort

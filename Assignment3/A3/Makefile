@@ -1,11 +1,7 @@
 # Compiler
 CC = mpicc
 
-# Compiler flags
-# -Wall: Enable all warnings
-# -O2: Optimization level 2
-# -g: Add debugging information (optional, useful for gdb)
-# -std=c99 or -std=c11: Specify C standard (optional, good practice)
+
 CFLAGS = -Wall -O3 -g -std=c99
 
 # Linker flags (if any specific ones are needed, usually not for basic MPI)
@@ -27,9 +23,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
-# Rule to compile .c files into .o files
-# $< is the first prerequisite (the .c file)
-# $@ is the target (the .o file)
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 

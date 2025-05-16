@@ -58,7 +58,6 @@ int main(int argc, char *argv[]) {
     int my_n; 
 
     my_n = distribute_from_root(all_elements, n_total, &my_elements);
-    // distribute_from_root handles its own critical memory allocation errors
 
     MPI_Barrier(MPI_COMM_WORLD); 
     double start_time, end_time, sort_time;
@@ -69,21 +68,18 @@ int main(int argc, char *argv[]) {
     }
 
     my_n = global_sort(&my_elements, my_n, MPI_COMM_WORLD, pivot_strategy);
-    // global_sort handles its own critical memory allocation errors
 
     end_time = MPI_Wtime();
     sort_time = end_time - start_time;
 
 
     gather_on_root(all_elements, my_elements, my_n);
-    // gather_on_root handles its own critical memory allocation errors for metadata
 
     if (rank == ROOT) {
         printf("%.6f\n", sort_time);
         if(n_total <= 100) {
             check_and_print(all_elements, n_total, output_file_name);
         }
-        // check_and_print assumes file operations succeed
         if (all_elements) {
             free(all_elements); 
         }
