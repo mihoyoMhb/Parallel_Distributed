@@ -24,13 +24,15 @@ int perform_shear_sort(DataDistribution *distrib, int pivot_strategy) {
         //                   even rows (k=2,4,6...) are sorted descending
         // In our code: even indices (0,2,4...) are sorted ascending
         //              odd indices (1,3,5...) are sorted descending
+        // printf("Doing row sort in phase %d (pivot strategy %d) on process %d\n", 
+        //       phase_idx, pivot_strategy, world_rank);
         int row_sort_result = perform_row_sort(distrib, phase_idx, pivot_strategy);
         if (row_sort_result != 0) {
             fprintf(stderr, "Process %d: Row sort failed in phase %d\n", 
                     world_rank, phase_idx);
             return -1;
         }
-        
+        // printf("Ending row sort in phase %d (pivot strategy %d) on process %d\n", phase_idx, pivot_strategy, world_rank);
         // 4. Column sort phase (only if not the last iteration)
         if (phase_idx < d) {
             int col_sort_result = perform_column_sort(distrib, phase_idx, pivot_strategy);

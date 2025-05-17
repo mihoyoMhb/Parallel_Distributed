@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <mpi.h>
 
 #define ROOT 0
 
@@ -403,7 +404,7 @@ int recursive_sort(int **elements_ptr, int n, MPI_Comm communicator,
     MPI_Comm_split(communicator, group, my_rank, &new_comm);
 
     // Sort in the new communicator
-    n = global_sort(elements_ptr, n, new_comm, pivot_strategy, sort_direction);
+    // n = global_sort(elements_ptr, n, new_comm, pivot_strategy, sort_direction);
     
     // Free the new communicator
     MPI_Comm_free(&new_comm);
@@ -496,143 +497,157 @@ int global_sort(int **elements_ptr, int n, MPI_Comm communicator,
     return n;
 }
 
+// Comparison function for qsort (ascending)
+static int compare_ascending(const void *a, const void *b) {
+    int int_a = *((const int*)a);
+    int int_b = *((const int*)b);
+    if (int_a < int_b) return -1;
+    if (int_a > int_b) return 1;
+    return 0;
+}
+
+// Comparison function for qsort (descending)
+static int compare_descending(const void *a, const void *b) {
+    int int_a = *((const int*)a);
+    int int_b = *((const int*)b);
+    // For descending, if a > b, a should come before b, so return -1
+    if (int_a > int_b) return -1;
+    if (int_a < int_b) return 1;
+    return 0;
+}
+
 /**
- * Perform the row sorting phase of shearsort
+ * Perform the row sorting phase of shearsort.
+ * If rows are distributed (p_c > 1), each global row is gathered across the relevant process row,
+ * sorted by all participating processes, and then the appropriate segment is taken back.
+ * If rows are not distributed horizontally (p_c == 1), each process sorts its local row segments directly.
  */
 int perform_row_sort(DataDistribution *distrib, int phase_idx, int pivot_strategy) {
+    (void)pivot_strategy; // Not used with qsort-based approach
+    (void)phase_idx;      // Not directly used; sort direction based on global row index
+
+    if (!distrib) {
+        // Cannot get distrib->world_rank if distrib is NULL
+        fprintf(stderr, "Process (unknown): Invalid DataDistribution (NULL) in perform_row_sort.\n");
+        return -1;
+    }
+    if (!distrib->local_data) {
+        fprintf(stderr, "Process %d: Invalid local_data (NULL) in perform_row_sort.\n", distrib->world_rank);
+        return -1;
+    }
+    
     int local_rows = distrib->local_rows;
     int local_cols = distrib->local_cols;
     int N = distrib->N;
-    
-    // For each local row
-    for (int local_row = 0; local_row < local_rows; local_row++) {
-        // Calculate global row number
-        int global_row = distrib->my_grid_row * local_rows + local_row;
-        
-        // Determine sort direction based on row parity
-        // Even rows (0-indexed) are sorted in ascending order
-        // Odd rows (0-indexed) are sorted in descending order
-        int sort_direction = (global_row % 2 == 0) ? SORT_ASCENDING : SORT_DESCENDING;
-        
-        // Extract the row data
-        int *row_segment = (int*)malloc(local_cols * sizeof(int));
-        if (!row_segment) {
-            fprintf(stderr, "Process %d: Memory allocation failed for row segment\n", 
-                    distrib->world_rank);
-            return -1;
-        }
-        
-        // Copy row data to the segment buffer
-        memcpy(row_segment, &(distrib->local_data[local_row * local_cols]), 
-               local_cols * sizeof(int));
-        
-        // Sort the row using global_sort
-        int num_elements = local_cols;
-        int *sorted_segment = row_segment;  // Start with the extracted segment
-        
-        // Perform global sort on this row using row communicator
-        // global_sort will free the memory pointed to by sorted_segment (i.e., row_segment's content)
-        // and allocate new memory for the result, updating sorted_segment to point to it.
-        // num_elements will be the count of items this process holds for the sorted row.
-        num_elements = global_sort(&sorted_segment, num_elements, 
-                                 distrib->row_comm, pivot_strategy, sort_direction);
-        
-        // At this point, sorted_segment contains 'num_elements' sorted items for this process's
-        // part of the current global row. The sum of 'num_elements' across all procs in row_comm is N.
-        // We need to redistribute these so each process gets 'local_cols' elements back, forming
-        // its correct part of the globally sorted row.
+    int my_rank_in_row_comm = -1;
+    int procs_in_row_comm = -1; 
 
-        int my_rank_in_row_comm, num_procs_in_row_comm;
-        MPI_Comm_rank(distrib->row_comm, &my_rank_in_row_comm);
-        MPI_Comm_size(distrib->row_comm, &num_procs_in_row_comm);
-
-        // 1. Get all counts of elements each process in row_comm holds after global_sort
-        int *all_proc_element_counts = (int*)malloc(num_procs_in_row_comm * sizeof(int));
-        if (!all_proc_element_counts) {
-            fprintf(stderr, "Process %d: Memory allocation failed for all_proc_element_counts\n", distrib->world_rank);
-            if (sorted_segment) free(sorted_segment); // sorted_segment was allocated by global_sort
-            MPI_Abort(MPI_COMM_WORLD, 1);
-            return -1;
-        }
-
-        MPI_Allgather(&num_elements, 1, MPI_INT, 
-                      all_proc_element_counts, 1, MPI_INT, distrib->row_comm);
-
-        // 2. Calculate displacements for MPI_Allgatherv to reconstruct the full sorted row
-        int *displacements = (int*)malloc(num_procs_in_row_comm * sizeof(int));
-        if (!displacements) {
-            fprintf(stderr, "Process %d: Memory allocation failed for displacements\n", distrib->world_rank);
-            free(all_proc_element_counts);
-            if (sorted_segment) free(sorted_segment);
-            MPI_Abort(MPI_COMM_WORLD, 1);
-            return -1;
-        }
-
-        displacements[0] = 0;
-        for (int i = 1; i < num_procs_in_row_comm; i++) {
-            displacements[i] = displacements[i-1] + all_proc_element_counts[i-1];
-        }
-        
-        // Optional: Verify total elements. Sum of all_proc_element_counts should be N.
-        // int total_row_elements_check = 0;
-        // for(int i=0; i<num_procs_in_row_comm; ++i) total_row_elements_check += all_proc_element_counts[i];
-        // if (total_row_elements_check != N) {
-        //    fprintf(stderr, "Process %d (Global Row %d): MISMATCH - total elements after sort in row_comm (%d) != N (%d)\n", 
-        //            distrib->world_rank, global_row, total_row_elements_check, N);
-        // }
-
-        // 3. Gather all pieces of the sorted row from all processes in row_comm into a full_sorted_row buffer.
-        // The size of the full_sorted_row is N (distrib->N).
-        int *full_sorted_row = (int*)malloc(N * sizeof(int));
-        if (!full_sorted_row) {
-            fprintf(stderr, "Process %d: Memory allocation failed for full_sorted_row\n", distrib->world_rank);
-            free(all_proc_element_counts);
-            free(displacements);
-            if (sorted_segment) free(sorted_segment);
-            MPI_Abort(MPI_COMM_WORLD, 1);
-            return -1;
-        }
-
-        MPI_Allgatherv(sorted_segment, num_elements, MPI_INT,             // Current process sends its piece
-                       full_sorted_row, all_proc_element_counts, displacements, MPI_INT, // Receives all pieces
-                       distrib->row_comm);
-
-        // 4. Copy the correct segment (local_cols elements) from full_sorted_row back to distrib->local_data.
-        // The starting offset for this process in full_sorted_row is its rank in row_comm * local_cols.
-        int start_offset_in_full_row = my_rank_in_row_comm * local_cols;
-
-        if (start_offset_in_full_row + local_cols <= N) {
-            memcpy(&(distrib->local_data[local_row * local_cols]), 
-                   &full_sorted_row[start_offset_in_full_row], 
-                   local_cols * sizeof(int));
-        } else {
-            // This should not happen if N is divisible by num_procs_in_row_comm (p_c)
-            // and local_cols is correctly N / p_c.
-            fprintf(stderr, "Process %d (Rank in RowComm %d): Error - Data copy bounds error. Offset %d + local_cols %d > N %d for global_row %d\n",
-                    distrib->world_rank, my_rank_in_row_comm, start_offset_in_full_row, local_cols, N, global_row);
-            free(full_sorted_row);
-            free(all_proc_element_counts);
-            free(displacements);
-            if (sorted_segment) free(sorted_segment);
-            MPI_Abort(MPI_COMM_WORLD, 1);
-            return -1;
-        }
-        
-        // Free the buffers used in this iteration
-        if (sorted_segment != NULL) { // sorted_segment was allocated by global_sort
-            free(sorted_segment);
-            sorted_segment = NULL; // Avoid double free if loop continues/errors
-        }
-        free(all_proc_element_counts);
-        free(displacements);
-        free(full_sorted_row);
-
-        // The old error check is removed as we now handle variable num_elements by redistributing.
-        // if (num_elements == local_cols) { ...
+    if (N == 0) return 0; 
+    if (local_cols == 0 && N > 0 && local_rows > 0) { 
+        // This process has rows but no columns in its local data for this N. This might be valid if p_c is very large.
+        // No row sorting work for this process if it has no columns.
+        return 0; 
     }
-    
-    // Synchronize after all rows are sorted by all processes in MPI_COMM_WORLD
-    MPI_Barrier(MPI_COMM_WORLD);
+    if (local_rows == 0) { // No rows assigned to this process
+        return 0;
+    }
+
+    if (distrib->row_comm != MPI_COMM_NULL) {
+        MPI_Comm_rank(distrib->row_comm, &my_rank_in_row_comm);
+        MPI_Comm_size(distrib->row_comm, &procs_in_row_comm);
+    } else {
+        // This implies p_c (number of process columns) is 1.
+        // Each process in a column forms its own 'row_comm' of size 1.
+        procs_in_row_comm = 1; 
+        my_rank_in_row_comm = 0; 
+    }
+
+    if (procs_in_row_comm == 1) { 
+        if (local_cols != N && N > 0) {
+             // This case should ideally not be hit if data distribution is consistent, 
+             // as p_c=1 implies local_cols = N/p_c = N.
+             // However, proceed if local_cols > 0.
+        }
+        for (int lr = 0; lr < local_rows; lr++) {
+            int global_row_idx = distrib->my_grid_row * local_rows + lr;
+            int (*compare_func)(const void*, const void*);
+            if (global_row_idx % 2 == 0) { 
+                compare_func = compare_ascending;
+            } else { 
+                compare_func = compare_descending;
+            }
+            if (local_cols > 0) { 
+                qsort(&(distrib->local_data[lr * local_cols]), local_cols, sizeof(int), compare_func);
+            }
+        }
+        return 0;
+    }
+
+    if (procs_in_row_comm <= 0) { 
+         fprintf(stderr, "Process %d: Row communicator has invalid size (%d) for distributed row sort.\n", distrib->world_rank, procs_in_row_comm);
+         MPI_Abort(MPI_COMM_WORLD, 1); return -1;
+    }
+
+    int *full_row_data = (int*)malloc(N * sizeof(int));
+    if (!full_row_data && N > 0) { // only error if N > 0, otherwise N*sizeof(int) is 0
+        fprintf(stderr, "Process %d: Failed to allocate memory for full_row_data (N=%d) in perform_row_sort\n", distrib->world_rank, N);
+        MPI_Abort(MPI_COMM_WORLD, 1); return -1; 
+    }
+
+    int *my_row_segment_send_buf = NULL;
+    if (local_cols > 0) {
+        my_row_segment_send_buf = (int*)malloc(local_cols * sizeof(int));
+        if (!my_row_segment_send_buf) {
+            fprintf(stderr, "Process %d: Failed to allocate memory for my_row_segment_send_buf (local_cols=%d) in perform_row_sort\n", distrib->world_rank, local_cols);
+            if (full_row_data) free(full_row_data);
+            MPI_Abort(MPI_COMM_WORLD, 1); return -1;
+        }
+    }
+
+    for (int lr = 0; lr < local_rows; lr++) { 
+        int global_row_idx = distrib->my_grid_row * distrib->local_rows + lr;
+        int (*compare_func)(const void*, const void*);
+        if (global_row_idx % 2 == 0) { 
+            compare_func = compare_ascending;
+        } else { 
+            compare_func = compare_descending;
+        }
+
+        if (local_cols > 0 && my_row_segment_send_buf) { 
+            memcpy(my_row_segment_send_buf, &(distrib->local_data[lr * local_cols]), local_cols * sizeof(int));
+        } else if (local_cols > 0 && !my_row_segment_send_buf) {
+             fprintf(stderr, "Process %d: Logic error - my_row_segment_send_buf is NULL when local_cols > 0.\n", distrib->world_rank);
+             if (full_row_data) free(full_row_data);
+             MPI_Abort(MPI_COMM_WORLD, 1); return -1;
+        }
+        
+        // All processes in row_comm participate. If local_cols is 0 for a process, it contributes 0 elements.
+        MPI_Allgather(local_cols > 0 ? my_row_segment_send_buf : NULL, 
+                      local_cols, MPI_INT,
+                      full_row_data, local_cols, MPI_INT, distrib->row_comm);
+        
+        if (N > 0 && full_row_data) { // Only sort if there's data
+            qsort(full_row_data, N, sizeof(int), compare_func);
+        }
+
+        if (local_cols > 0) { 
+            int start_offset_in_full_row = my_rank_in_row_comm * local_cols;
+            if (start_offset_in_full_row + local_cols <= N) {
+                 memcpy(&(distrib->local_data[lr * local_cols]), 
+                       &full_row_data[start_offset_in_full_row], 
+                       local_cols * sizeof(int));
+            } else {
+                fprintf(stderr, "Process %d (Rank in RowComm %d, GridRow %d): Error - Row data copy bounds. Offset %d + local_cols %d > N %d for global_row %d, local_row %d\n",
+                    distrib->world_rank, my_rank_in_row_comm, distrib->my_grid_row, start_offset_in_full_row, local_cols, N, global_row_idx, lr);
+                if (my_row_segment_send_buf) free(my_row_segment_send_buf);
+                if (full_row_data) free(full_row_data);
+                MPI_Abort(MPI_COMM_WORLD, 1); return -1;
+            }
+        }
+    }
+
+    if (my_row_segment_send_buf) free(my_row_segment_send_buf);
+    if (full_row_data) free(full_row_data);
     
     return 0;
 }

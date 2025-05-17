@@ -109,42 +109,11 @@ int main(int argc, char **argv) {
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
-    // Print initial local block for each process
-    print_local_block(&distrib, "Initial local block");
-    MPI_Barrier(MPI_COMM_WORLD); // Synchronize before printing global (if done)
-
     int *initial_full_matrix = NULL;
     // This whole block for gathering and printing initial global matrix is conditional on N <= 32
     if (N <= 32) {
-        if (rank == 0) {
-            // Root allocates the buffer for gathering
-            initial_full_matrix = (int*)malloc(N * N * sizeof(int));
-            if (initial_full_matrix == NULL) {
-                fprintf(stderr, "Root: Failed to allocate memory for initial_full_matrix. Printing of gathered global matrix will be skipped.\n");
-                // initial_full_matrix remains NULL. gather_matrix in shear_sort.c might handle this or fail.
-                // For safety, if malloc fails, root should ideally not proceed with a gather that needs this buffer,
-                // or ensure gather_matrix is robust to a NULL buffer on root (e.g. by not attempting the MPI_Gatherv).
-                // However, to fix the immediate hang, we ensure all call gather_matrix.
-                // The robustness of gather_matrix to a NULL buffer on root is a separate concern (Issue #2).
-            }
-        }
-
-        // ALL processes must call gather_matrix because it uses MPI_Gatherv (a collective operation).
-        // The 'initial_full_matrix' argument is the receive buffer for the root process.
-        // For non-root processes, this argument is effectively ignored by MPI_Gatherv's recvbuf parameter.
-        // So, non-root processes passing their local NULL initial_full_matrix is fine.
-        int gather_res = gather_matrix(&distrib, initial_full_matrix);
-        if (gather_res == 0) {
-            if (rank == 0 && initial_full_matrix != NULL) {
-                // Only root prints, and only if its buffer is valid
-                // print_global_matrix_on_root(initial_full_matrix, N, rank);
-            }
-        } else {
-            if (rank == 0) {
-                fprintf(stderr, "Root: gather_matrix failed for initial data (returned %d).\n", gather_res);
-            }
-            // Other ranks could also log error if gather_matrix returns non-zero for them.
-        }
+        print_local_block(&distrib, "Initial local block");
+        MPI_Barrier(MPI_COMM_WORLD); // Synchronize before printing global
     } // End of if (N <= 32)
     
     // User debug print - ensure ordered printing for clarity
@@ -178,35 +147,10 @@ int main(int argc, char **argv) {
         printf("Shear sort on %dx%d matrix completed in %f seconds\n", N, N, end_time - start_time);
     }
 
-    // Print final local block for each process
-    print_local_block(&distrib, "Final local block (after sort)");
-    MPI_Barrier(MPI_COMM_WORLD); // Synchronize before printing global (if done)
-
     int *final_full_matrix = NULL;
     // This whole block for gathering and printing final global matrix is conditional on N <= 32
-    if (N <= 32) {
-        if (rank == 0) {
-            final_full_matrix = (int*)malloc(N * N * sizeof(int));
-            if (final_full_matrix == NULL) {
-                fprintf(stderr, "Root: Failed to allocate memory for final_full_matrix. Printing of gathered global matrix will be skipped.\n");
-            }
-        }
-
-        // ALL processes must call gather_matrix for the final matrix as well.
-        int gather_res_final = gather_matrix(&distrib, final_full_matrix);
-        if (gather_res_final == 0) {
-            if (rank == 0 && final_full_matrix != NULL) {
-                printf("----------------Final gathered global matrix on root (after sort):----------------\n");
-                print_global_matrix_on_root(final_full_matrix, N, rank);
-            }
-        } else {
-            if (rank == 0) {
-                fprintf(stderr, "Root: gather_matrix failed for final data (returned %d).\n", gather_res_final);
-            }
-        }
-    }
     
-    printf("Sorting completed. Verifying snake-like order...\n");
+    // printf("Sorting completed. Verifying snake-like order...\n");
     int is_sorted = verify_snake_order(&distrib);
     if (rank == 0) {
         if (is_sorted) {

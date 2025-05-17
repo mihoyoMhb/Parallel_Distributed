@@ -327,7 +327,7 @@ int gather_full_matrix(DataDistribution *distrib, int *global_matrix) {
                 int source_rank = r * p_c + c;
                 if (source_rank == 0) continue; // Already handled root's own data
 
-                MPI_Status status;
+                // MPI_Status status;
                 int recv_count = 0;
                 // Use MPI_Probe to find out the actual size of the message from this specific source
                 // This is not strictly necessary if all blocks are guaranteed to be local_rows * local_cols
