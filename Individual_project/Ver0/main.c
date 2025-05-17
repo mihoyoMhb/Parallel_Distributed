@@ -11,7 +11,7 @@
 #include "shear_sort.h"
 
 #define DEFAULT_MATRIX_SIZE 16 // This will be overridden by CSV if present
-#define CSV_FILENAME "matrix_data.csv"
+// #define CSV_FILENAME "matrix_data.csv" // Commented out old definition
 
 // Print a matrix (for debugging purposes)
 void print_global_matrix_on_root(int *matrix, int N, int rank) {
@@ -31,14 +31,19 @@ int main(int argc, char **argv) {
     int N = DEFAULT_MATRIX_SIZE;
     int rank, size;
     double start_time, end_time;
-    const char* csv_filename = CSV_FILENAME;
+    const char* csv_filename = "matrix_data.csv"; // Default value
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     // Optional: Allow overriding CSV filename from command line
-    // if (argc > 1) { csv_filename = argv[1]; }
+    if (argc > 1) { 
+        csv_filename = argv[1]; 
+        if (rank == 0) {
+            printf("Root: Using CSV file from command line: %s\n", csv_filename);
+        }
+    }
 
     if (rank == 0) {
         FILE *fp = fopen(csv_filename, "r");

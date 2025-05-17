@@ -1,6 +1,7 @@
 import csv
 import random
 import argparse
+import os
 
 def generate_matrix_csv(rows, cols, output_filename="matrix_data.csv"):
     """
@@ -11,6 +12,12 @@ def generate_matrix_csv(rows, cols, output_filename="matrix_data.csv"):
         cols (int): The number of columns in the matrix.
         output_filename (str): The name of the CSV file to create.
     """
+    # Ensure the output directory exists
+    output_dir = os.path.dirname(output_filename)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created directory: {output_dir}")
+
     matrix = [[random.randint(0, 999) for _ in range(cols)] for _ in range(rows)]
 
     with open(output_filename, 'w', newline='') as csvfile:
@@ -25,7 +32,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a CSV file for matrix data.")
     parser.add_argument("--rows", type=int, default=6, help="Number of rows for the matrix.")
     parser.add_argument("--cols", type=int, default=6, help="Number of columns for the matrix.")
-    parser.add_argument("--output", type=str, default="matrix_data.csv", help="Output CSV filename.")
+    parser.add_argument("--output", type=str, default="/home/mihoyohb/Datas/matrix_data.csv", help="Output CSV filename.")
     
     args = parser.parse_args()
 
