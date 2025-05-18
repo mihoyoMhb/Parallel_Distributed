@@ -99,7 +99,7 @@ int load_csr_matrix(const char *filename, CSRMatrix *matrix);
  * @param comm MPI communicator
  */
 // Function to normalize a vector
-void normalize_vector(double *vector, int size) ;
+void normalize_vector(double *vector, int size);
 
 /**
  * @brief Serial version of vector normalization for correctness testing
@@ -114,7 +114,7 @@ void normalize_vector(double *vector, int size) ;
  */
 void serial_normalize_vector(double *vector, int size, MPI_Comm comm);
 
-
+void parallel_normalize_vector(double *vector, int size, MPI_Comm comm);
 
 // Power method implementation
 double power_method(CSRMatrix *matrix, double *initial_vector, int max_iterations, double tolerance, MPI_Comm comm);

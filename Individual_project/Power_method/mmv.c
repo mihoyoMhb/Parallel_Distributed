@@ -31,17 +31,26 @@ int load_csr_matrix(const char *filename, CSRMatrix *matrix) {
     
     // Read row_ptr
     for (int i = 0; i <= num_rows; i++) {
-        fscanf(file, "%d", &matrix->row_ptr[i]);
+        if (fscanf(file, "%d", &matrix->row_ptr[i]) != 1) {
+            fclose(file);
+            return 0;
+        }
     }
     
     // Read col_ind
     for (int i = 0; i < num_nnz; i++) {
-        fscanf(file, "%d", &matrix->col_ind[i]);
+        if (fscanf(file, "%d", &matrix->col_ind[i]) != 1) {
+            fclose(file);
+            return 0;
+        }
     }
     
     // Read values
     for (int i = 0; i < num_nnz; i++) {
-        fscanf(file, "%lf", &matrix->values[i]);
+        if (fscanf(file, "%lf", &matrix->values[i]) != 1) {
+            fclose(file);
+            return 0;
+        }
     }
     
     fclose(file);
@@ -119,9 +128,9 @@ void distribute_matrix(CSRMatrix *global, CSRMatrix *local, int rank, int size) 
     free(row_starts);
     
     // Print load balancing information
-    printf("Process %d: Processing rows %d to %d (total %d rows, %d non-zero elements)\n", 
-           rank, local->row_start, local->row_start + local->local_n - 1,
-           local->local_n, local->nnz);
+    // printf("Process %d: Processing rows %d to %d (total %d rows, %d non-zero elements)\n", 
+    //        rank, local->row_start, local->row_start + local->local_n - 1,
+    //        local->local_n, local->nnz);
 }
 
 // Collect indices of required x vector elements
@@ -370,6 +379,34 @@ void normalize_vector(double *vector, int size) {
     }
 }
 
+// Parallel vector normalization
+void parallel_normalize_vector(double *vector, int size, MPI_Comm comm) {
+    int rank, num_procs;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &num_procs);
+    
+    double local_sum = 0.0;
+    double global_sum = 0.0;
+    
+    // Each process computes sum of squares for its portion
+    for (int i = 0; i < size; i++) {
+        local_sum += vector[i] * vector[i];
+    }
+    
+    // Combine results from all processes
+    MPI_Allreduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, comm);
+    
+    // Calculate the norm
+    double norm = sqrt(global_sum);
+    
+    // Each process normalizes its portion of the vector
+    if (norm != 0.0) {
+        for (int i = 0; i < size; i++) {
+            vector[i] /= norm;
+        }
+    }
+}
+
 // Optimized Power method implementation with redundant error checks removed
 double power_method(CSRMatrix *matrix, double *initial_vector, int max_iterations, double tolerance, MPI_Comm comm) {
     int rank, size;
@@ -417,15 +454,17 @@ double power_method(CSRMatrix *matrix, double *initial_vector, int max_iteration
         }
 
         // Normalize next_vector
-        normalize_vector(next_vector, n);
+        if (size > 1) {
+            parallel_normalize_vector(next_vector, n, comm);
+            // normalize_vector(next_vector, n);
+        } else {
+            normalize_vector(next_vector, n);
+        }
 
         // Check for convergence (only on rank 0)
         if (rank == 0) {
             converged = (fabs(eigenvalue - prev_eigenvalue) < tolerance) ? 1 : 0;
-            
-            if (converged) {
-                printf("Converged after %d iterations. Eigenvalue: %f\n", iter + 1, eigenvalue);
-            } else if (iter == max_iterations - 1) {
+            if (iter == max_iterations - 1) {
                 printf("Power method did not converge within %d iterations. Current eigenvalue: %f\n", max_iterations, eigenvalue);
             }
         }

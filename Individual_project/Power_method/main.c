@@ -7,7 +7,7 @@
 #include "mmv_utils.h"
 
 // Configuration parameters
-#define VERIFY_SPMV 1  // Set to 0 to disable SpMV verification
+#define VERIFY_SPMV 0  // Set to 0 to disable SpMV verification
 #define RUN_POWER_METHOD 1  // Set to 0 to disable power method
 #define MAX_ITERATIONS 1000  // Maximum iterations for power method
 #define TOLERANCE 1e-6  // Convergence tolerance for power method
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
 #if RUN_POWER_METHOD
     // ===== Power Method section =====
     if (rank == 0) {
-        printf("\n=== Running Power Method for Dominant Eigenvector ===\n");
+        // printf("\n=== Running Power Method for Dominant Eigenvector ===\n");
         
         // Reset the x vector for power method
         for (int i = 0; i < global_matrix.n; i++) {
@@ -118,14 +118,16 @@ int main(int argc, char **argv) {
     double power_end_time = MPI_Wtime();
     
     if (rank == 0) {
-        printf("Eigenvalue: %f\n", eigenvalue);
-        printf("Power method computation time: %f seconds\n", power_end_time - power_start_time);
+        // printf("Eigenvalue: %f\n", eigenvalue);
         // Print a sample of the eigenvector
-        printf("Dominant eigenvector (first %d elements): ", global_matrix.n < 10 ? global_matrix.n : 10);
-        for (int i = 0; i < (global_matrix.n < 10 ? global_matrix.n : 10); i++) {
-            printf("%f ", x[i]);
-        }
-        printf("\n");
+        // printf("Dominant eigenvector (first %d elements): ", global_matrix.n < 10 ? global_matrix.n : 10);
+        // for (int i = 0; i < (global_matrix.n < 10 ? global_matrix.n : 10); i++) {
+        //     printf("%f ", x[i]);
+        // }
+        // printf("\n");
+        // printf("Power method computation time: %f seconds\n", power_end_time - power_start_time);
+        printf("%f seconds\n", power_end_time - power_start_time);
+        printf("%f\n", eigenvalue);
     }
 #endif // RUN_POWER_METHOD
     
