@@ -1,4 +1,6 @@
 #include "mmv.h"
+#include <math.h>
+
 int compare_ints(const void *a, const void *b) {
     return (*(int*)a - *(int*)b);
 }
@@ -351,6 +353,103 @@ void parallel_spmv(CSRMatrix *local, double *global_x, double *result, MPI_Comm 
     free(needed_indices);
     free(needed_x);
     free(local_result);
-    
 }
+
+// Function to normalize a vector
+void normalize_vector(double *vector, int size) {
+    double norm = 0.0;
+    for (int i = 0; i < size; i++) {
+        norm += vector[i] * vector[i];
+    }
+    norm = sqrt(norm);
+    
+    if (norm != 0.0) {
+        for (int i = 0; i < size; i++) {
+            vector[i] /= norm;
+        }
+    }
+}
+
+// Optimized Power method implementation with redundant error checks removed
+double power_method(CSRMatrix *matrix, double *initial_vector, int max_iterations, double tolerance, MPI_Comm comm) {
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    int n = matrix->n;
+    double *current_vector = (double*)malloc(n * sizeof(double));
+    double *next_vector = (double*)malloc(n * sizeof(double));
+
+    // Initialize current_vector with the initial_vector or a vector of ones
+    if (initial_vector != NULL) {
+        memcpy(current_vector, initial_vector, n * sizeof(double));
+    } else {
+        for (int i = 0; i < n; i++) {
+            current_vector[i] = 1.0;
+        }
+    }
+
+
+    double eigenvalue = 0.0;
+    double prev_eigenvalue = 0.0;
+    int converged = 0;
+
+    for (int iter = 0; iter < max_iterations; iter++) {
+        // Perform SpMV: next_vector = matrix * current_vector
+        if (size > 1) {
+            parallel_spmv(matrix, current_vector, next_vector, comm);
+        } else {
+            serial_spmv(matrix, current_vector, next_vector);
+        }
+
+        // Estimate eigenvalue
+        eigenvalue = 0.0;
+        for (int i = 0; i < n; i++) {
+            eigenvalue += current_vector[i] * next_vector[i];
+        }
+        
+        // Aggregate eigenvalue in parallel environment
+        if (size > 1) {
+            double local_eigenvalue_sum = eigenvalue;
+            MPI_Reduce(&local_eigenvalue_sum, &eigenvalue, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+            // Broadcast the eigenvalue to all processes
+            MPI_Bcast(&eigenvalue, 1, MPI_DOUBLE, 0, comm);
+        }
+
+        // Normalize next_vector
+        normalize_vector(next_vector, n);
+
+        // Check for convergence (only on rank 0)
+        if (rank == 0) {
+            converged = (fabs(eigenvalue - prev_eigenvalue) < tolerance) ? 1 : 0;
+            
+            if (converged) {
+                printf("Converged after %d iterations. Eigenvalue: %f\n", iter + 1, eigenvalue);
+            } else if (iter == max_iterations - 1) {
+                printf("Power method did not converge within %d iterations. Current eigenvalue: %f\n", max_iterations, eigenvalue);
+            }
+        }
+        
+        // Broadcast convergence status if parallel
+        if (size > 1) {
+            MPI_Bcast(&converged, 1, MPI_INT, 0, comm);
+        }
+            
+        if (converged) {
+            break;
+        }
+        
+        prev_eigenvalue = eigenvalue;
+
+        // Update current_vector for the next iteration
+        memcpy(current_vector, next_vector, n * sizeof(double));
+    }
+
+    free(current_vector);
+    free(next_vector);
+
+    return eigenvalue;
+}
+
+
 

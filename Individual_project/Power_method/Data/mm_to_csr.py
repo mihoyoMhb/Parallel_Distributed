@@ -59,7 +59,7 @@ def process_all_mtx_files():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Build Datas directory path
-    datas_dir = os.path.join(script_dir, "Datas")
+    datas_dir = os.path.join(script_dir, "Original_Data")
     
     if not os.path.exists(datas_dir):
         print(f"Error: Cannot find Datas directory ({datas_dir})")

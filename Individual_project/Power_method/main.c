@@ -4,6 +4,13 @@
 #include <time.h>
 #include <math.h>
 #include "mmv.h"
+#include "mmv_utils.h"
+
+// Configuration parameters
+#define VERIFY_SPMV 1  // Set to 0 to disable SpMV verification
+#define RUN_POWER_METHOD 1  // Set to 0 to disable power method
+#define MAX_ITERATIONS 1000  // Maximum iterations for power method
+#define TOLERANCE 1e-6  // Convergence tolerance for power method
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
@@ -16,7 +23,6 @@ int main(int argc, char **argv) {
     CSRMatrix local_matrix = {0};
     double *x = NULL;
     double *result = NULL;
-    double *verification_result = NULL;
     
     // Get matrix filename from command line arguments, or use default
     const char* matrix_filename = (argc > 1) ? argv[1] : "matrix.csr";
@@ -35,7 +41,6 @@ int main(int argc, char **argv) {
         }
         
         result = (double*)malloc(global_matrix.n * sizeof(double));
-        verification_result = (double*)malloc(global_matrix.n * sizeof(double));
     }
     
     // Broadcast matrix dimensions
@@ -72,78 +77,70 @@ int main(int argc, char **argv) {
     // Distribute matrix to processes
     distribute_matrix(&global_matrix, &local_matrix, rank, size);
     
+#if VERIFY_SPMV
+    // ===== SpMV verification section =====
+    if (rank == 0) {
+        printf("\n=== Testing Sparse Matrix-Vector Multiplication ===\n");
+    }
+    // Normalize the initial vector
+    normalize_vector(x, global_matrix.n);
     // Compute parallel SpMV
-    double start_time = MPI_Wtime();
+    double spmv_start_time = MPI_Wtime();
     parallel_spmv(&local_matrix, x, result, MPI_COMM_WORLD);
-    double end_time = MPI_Wtime();
+    double spmv_end_time = MPI_Wtime();
     
     // Output and verify results
     if (rank == 0) {
-        printf("Parallel computation time: %f seconds\n", end_time - start_time);
+        printf("Parallel computation time: %f seconds\n", spmv_end_time - spmv_start_time);
         
-        printf("Parallel results (first %d elements): ", global_matrix.n < 10 ? global_matrix.n : 10);
-        for (int i = 0; i < (global_matrix.n < 10 ? global_matrix.n : 10); i++) {
-            printf("%f ", result[i]);
-        }
-        printf("\n");
+        // Call the verification function from mmv_utils.c
+        verify_spmv_results(&global_matrix, x, result, global_matrix.n);
+    }
+#endif // VERIFY_SPMV
+
+#if RUN_POWER_METHOD
+    // ===== Power Method section =====
+    if (rank == 0) {
+        printf("\n=== Running Power Method for Dominant Eigenvector ===\n");
         
-        // Verify using optimized serial algorithm
-        // Prepare global matrix for verification
-        CSRMatrix serial_matrix = {0};
-        serial_matrix.n = global_matrix.n;
-        serial_matrix.local_n = global_matrix.n;
-        serial_matrix.nnz = global_matrix.nnz;
-        serial_matrix.row_start = 0;
-        serial_matrix.values = global_matrix.values;
-        serial_matrix.col_ind = global_matrix.col_ind;
-        serial_matrix.row_ptr = global_matrix.row_ptr;
-        
-        // Use the same optimized algorithm for serial computation
-        start_time = MPI_Wtime();
-        serial_spmv(&serial_matrix, x, verification_result);
-        end_time = MPI_Wtime();
-        
-        printf("Serial optimized computation time: %f seconds\n", end_time - start_time);
-        
-        printf("Verification results (first %d elements): ", global_matrix.n < 10 ? global_matrix.n : 10);
-        for (int i = 0; i < (global_matrix.n < 10 ? global_matrix.n : 10); i++) {
-            printf("%f ", verification_result[i]);
-        }
-        printf("\n");
-        
-        // Verify consistency between parallel results and optimized serial results
-        int errors = 0;
-        double tol = 1e-6;
+        // Reset the x vector for power method
         for (int i = 0; i < global_matrix.n; i++) {
-            if (fabs(result[i] - verification_result[i]) > tol) {
-                errors++;
-                if (errors < 5) {
-                    printf("Verification mismatch at index %d: parallel=%f, serial=%f, diff=%e\n",
-                            i, result[i], verification_result[i], fabs(result[i] - verification_result[i]));
-                }
-            }
+            x[i] = (double)rand() / RAND_MAX;
         }
-        
-        if (errors > 0) {
-            printf("Verification failed with %d mismatches.\n", errors);
-        } else {
-            printf("Verification passed.\n");
-        }
-        
-        free(verification_result);
     }
     
-    // Free memory
-    if (local_matrix.values) free(local_matrix.values);
-    if (local_matrix.col_ind) free(local_matrix.col_ind);
-    if (local_matrix.row_ptr) free(local_matrix.row_ptr);
+    // Broadcast the initial vector
+    MPI_Bcast(x, global_matrix.n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     
-    if (global_matrix.values) free(global_matrix.values);
-    if (global_matrix.col_ind) free(global_matrix.col_ind);
-    if (global_matrix.row_ptr) free(global_matrix.row_ptr);
+    // Run power method and measure time
+    double power_start_time = MPI_Wtime();
+    double eigenvalue = power_method(&local_matrix, x, MAX_ITERATIONS, TOLERANCE, MPI_COMM_WORLD);
+    double power_end_time = MPI_Wtime();
     
+    if (rank == 0) {
+        printf("Eigenvalue: %f\n", eigenvalue);
+        printf("Power method computation time: %f seconds\n", power_end_time - power_start_time);
+        // Print a sample of the eigenvector
+        printf("Dominant eigenvector (first %d elements): ", global_matrix.n < 10 ? global_matrix.n : 10);
+        for (int i = 0; i < (global_matrix.n < 10 ? global_matrix.n : 10); i++) {
+            printf("%f ", x[i]);
+        }
+        printf("\n");
+    }
+#endif // RUN_POWER_METHOD
+    
+    // Free resources
     if (x) free(x);
     if (result) free(result);
+    
+    // Free matrix memory
+    if (global_matrix.row_ptr) free(global_matrix.row_ptr);
+    if (global_matrix.col_ind) free(global_matrix.col_ind);
+    if (global_matrix.values) free(global_matrix.values);
+    
+    if (local_matrix.row_ptr) free(local_matrix.row_ptr);
+    if (local_matrix.col_ind) free(local_matrix.col_ind);
+    if (local_matrix.values) free(local_matrix.values);
     
     MPI_Finalize();
     return 0;

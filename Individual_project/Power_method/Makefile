@@ -7,7 +7,7 @@ LDFLAGS = -lm
 TARGET = mmv
 
 # Source files and object files
-SRCS = main.c mmv.c
+SRCS = main.c mmv.c mmv_utils.c
 OBJS = $(SRCS:.c=.o)
 
 # Default target

@@ -86,4 +86,37 @@ void parallel_spmv(CSRMatrix *local, double *global_x, double *result, MPI_Comm 
 // Load CSR matrix from file
 int load_csr_matrix(const char *filename, CSRMatrix *matrix);
 
+/**
+ * @brief Normalizes a vector by its L2 norm (Euclidean length)
+ * 
+ * This function implements the normalization step: x_i ← x_i / √(∑x_k^2)
+ * In parallel computing, the normalization requires global communication
+ * to compute the total norm across all processes.
+ * 
+ * @param vector The vector to be normalized (input/output parameter)
+ * @param local_size Number of elements in the local portion of the vector
+ * @param global_size Total size of the vector across all processes
+ * @param comm MPI communicator
+ */
+// Function to normalize a vector
+void normalize_vector(double *vector, int size) ;
+
+/**
+ * @brief Serial version of vector normalization for correctness testing
+ * 
+ * This function implements the normalization step in a serial manner,
+ * with only process 0 performing the computation and then broadcasting
+ * the result to all processes.
+ * 
+ * @param vector The vector to be normalized (input/output parameter)
+ * @param size Total size of the vector
+ * @param comm MPI communicator
+ */
+void serial_normalize_vector(double *vector, int size, MPI_Comm comm);
+
+
+
+// Power method implementation
+double power_method(CSRMatrix *matrix, double *initial_vector, int max_iterations, double tolerance, MPI_Comm comm);
+
 #endif 
