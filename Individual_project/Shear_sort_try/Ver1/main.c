@@ -164,7 +164,15 @@ int main(int argc, char **argv) {
             printf("Verification failed: Matrix is NOT correctly sorted\n");
         }
     }
-    
+    if(N <= 32) {
+        final_full_matrix = (int *)malloc(N * N * sizeof(int));
+        if (final_full_matrix == NULL) {
+            fprintf(stderr, "Process %d: Failed to allocate memory for final full matrix\n", rank);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        gather_matrix(&distrib, final_full_matrix);
+        print_global_matrix_on_root(final_full_matrix, N, rank);
+    }
     cleanup_distribution(&distrib);
     if (initial_full_matrix) free(initial_full_matrix);
     if (final_full_matrix) free(final_full_matrix);
